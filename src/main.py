@@ -14,7 +14,13 @@ df_file = os.path.join(samples_dir, 'combined.tab')
 if not os.path.isfile(df_file):
     sample_parser.combine(gt_file, bed_file, samples_dir)
 
-df = pandas.read_csv(df_file, sep='\t')
+df = pandas.read_csv(df_file, sep='\t', low_memory=False)#, dtype=object)
+        # dtype={'CHROMOSOME': str, 'POSITION': int, 'TOTAL_CALLERS': int,\
+        # 'GENE': str, 'DNA_CHANGE': str, 'PROTEIN_CHANGE': str,\
+        # 'EXAC_FREQ_ESTIMATE': str, '1KG_FREQ_ESTIMATE': str,\
+        # 'GT_VARSCAN': str, 'GT_GATK': str, 'GT_SAMTOOLS': str,\
+        # 'GT_FREEBAYES': str, 'GT_VARDICT': str, 'SMPLE_ID': str,\
+        # 'COVERED': bool, 'REPORTABLE': bool})
 gt_parsed = sample_parser.parse_gt(gt_file)
 match_list = sample_parser.find_matches(next(os.walk(samples_dir))[1], gt_parsed)
 gt = pandas.concat(sample_parser.split_gt(gt_parsed, match_list)).reset_index(drop=True)
@@ -32,4 +38,4 @@ for caller in sample_parser.get_caller_names(df):
     # print(tp)
     # print('False negatives:')
     # print(analysis.get_false_negatives(tp, gt))
-    print('TP+FP: ' + str(tp.shape[0]+fn.shape[0]))
+    print('TP+FN: ' + str(tp.shape[0]+fn.shape[0]))
