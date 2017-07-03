@@ -101,4 +101,5 @@ ENV/
 .mypy_cache/
 
 # exome data
-data/**
+data/samples/**
+data/ground_truth/*
