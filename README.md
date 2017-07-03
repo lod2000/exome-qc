@@ -36,4 +36,4 @@ Alternately, to generate only the combined data file with no analysis:
 
 ## Output
 
-A tab-delimited file of data from all samples combined will be generated at `data/samples/combined.tab`. Also, a CSV with basic analysis of the variant callers will be generated at `data/analysis.csv`.
+A tab-delimited file of data from all samples combined will be generated at `data/samples/combined.tab` This will be used if the script is run again, to avoid generating the same large DataFrame multiple times. Also, a CSV with basic analysis of the variant callers will be generated at `data/analysis.csv`.

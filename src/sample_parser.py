@@ -166,7 +166,7 @@ def combine(gt_file, bed_file, samples_dir):
     reportables_list = df.shape[0] * [False]
 
     # Set up progress indicator
-    sys.stdout.write('Progress:  0%')
+    sys.stdout.write('Generating combined DataFrame:  0%')
     sys.stdout.flush()
 
     # Cycle through every variant
