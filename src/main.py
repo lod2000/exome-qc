@@ -1,25 +1,14 @@
-import argparse, os, pandas
+import os, pandas, sys, glob
 import sample_parser, analysis
 
-# Parser / command line instructions
-# Description of script
-arg_parser = argparse.ArgumentParser(description='Compares sample variants to\
-        ground truth file and produces false negatives, false positives,\
-        and true positives.')
-# First argument: ground truth Excel file
-arg_parser.add_argument('file1', help='ground truth .xlsx', action='store')
-# Second argument: small panel gene list, bed file
-arg_parser.add_argument('file2', help='.bed', action='store')
-# Third argument: directory containing sample directories
-arg_parser.add_argument('directory', help='directory containing all sample\
-        directories', action='store')
-
-# Parse arguments
-args = arg_parser.parse_args()
-gt_file = args.file1
-bed_file = args.file2
-samples_dir = args.directory
-
+# Get path to this file
+src_path = sys.path[0]
+# Set path to data directory
+data_path = os.path.join(src_path, '..', 'data')
+gt_file = glob.glob(os.path.join(data_path, 'ground_truth', '*.xlsx'))[0]
+bed_file = glob.glob(os.path.join(data_path, 'panel', '*.bed'))[0]
+samples_dir = os.path.join(data_path, 'samples')
+# Combined data tab file path
 df_file = os.path.join(samples_dir, 'combined.tab')
 
 if not os.path.isfile(df_file):
