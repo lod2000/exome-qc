@@ -1,4 +1,4 @@
-import os, pandas, sys, glob
+import os, pandas, sys, glob, math
 import sample_parser, analysis
 
 # Get path to this file
@@ -32,48 +32,44 @@ pandas.set_option('display.width', 300)
 print(positions.shape[0])
 
 # Initialize analysis DataFrame
-analysis_df = pandas.DataFrame({'ANALYSIS':['True Positives','False Positives',\
-        'False Negatives','True Positive Rate','Positive Predictive Value',\
-        'False Negative Rate','False Discovery Rate']})
+analysis_df = pandas.DataFrame({'ANALYSIS':['True Positives', 'True Negatives', 'False Positives', 'False Negatives', 'True Positive Rate', 'True Negative Rate', 'Positive Predictive Value', 'Negative Predictive Value', 'False Negative Rate', 'False Positive Rate', 'False Discovery Rate', 'False Omission Rate', 'Accuracy', 'Matthews Correlation Coefficient']})
 
 for caller in sample_parser.get_caller_names(df):
     print('\n')
     print(caller)
 
     # True positives DataFrame
-    tp = analysis.get_true_positives(df, caller)
+    tp_df = analysis.get_true_positives(df, caller)
     # False positives DataFrame
-    fp = analysis.get_false_positives(df, caller)
-    # False negatives DataFrame
-    fn = analysis.get_false_negatives(tp, gt)
+    fp_df = analysis.get_false_positives(df, caller)
     # True negatives in DataFrame
-    tn = analysis.get_true_negatives(fp, caller, positions)
-    # tn.to_csv(os.path.join(samples_dir, caller + '_tn.tab'), sep='\t', encoding='utf-8', index=False)
+    tn_df = analysis.get_true_negatives(fp_df, caller, positions)
+    # False negatives DataFrame
+    fn_df = analysis.get_false_negatives(tp_df, gt)
 
     # Count rows in DataFrames
-    tps = tp.shape[0]
-    tns = tn.shape[0]
-    fps = fp.shape[0]
-    fns = fn.shape[0]
+    tp = tp_df.shape[0]
+    tn = tn_df.shape[0]
+    fp = fp_df.shape[0]
+    fn = fn_df.shape[0]
 
     # Analysis
-    # tpr = tps / (tps + fns)
-    # ppv = tps / (tps + fps)
-    # fnr = fns / (fns + tps)
-    # fdr = fps / (fps + tps)
+    tpr = tp / (tp + fn) # True positive rate (sensitivity)
+    tnr = tn / (tn + fp) # True negative rate (specificity)
+    ppv = tp / (tp + fp) # Positive predictive value (precision)
+    npv = tn / (tn + fn) # Negative predictive value
+    fnr = fn / (fn + tp) # False negative rate (miss rate)
+    fpr = fp / (fp + tn) # False positive rate (fall-out)
+    fdr = fp / (fp + tp) # False discovery rate
+    fom = fn / (fn + tn) # False omission rate
+    acc = (tp + tn) / (tp + tn + fp + fn) # Accuracy
+    # Matthews correlation coefficient
+    mcc = (tp * tn - fp * fn) / math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
 
-    # print(tps+fns)
-    print(fps+tns)
-    # print(fp)
-    # print(tns)
-    # print(fp)
-    # print(fns)
-    # print(fp)
+    analysis_df[caller] = [tp, tn, fp, fn, tpr, tnr, ppv, npv, fnr, fpr, fdr, fom, acc, mcc]
 
-    # analysis_df[caller] = [tps, fps, fns, tpr, ppv, fnr, fdr]
-
-# analysis_file = os.path.join(data_path, 'analysis.csv')
-# try:
-    # analysis_df.to_csv(analysis_file, sep='\t', encoding='utf-8', index=False)
-# except PermissionError:
-#     print('Another program is using the file analysis.csv. Please close and try again.')
+analysis_file = os.path.join(data_path, 'analysis.csv')
+try:
+    analysis_df.to_csv(analysis_file, sep='\t', encoding='utf-8', index=False)
+except PermissionError:
+    print('Another program is using the file analysis.csv. Please close and try again.')
