@@ -22,13 +22,14 @@ gt_parsed = sample_parser.parse_gt(gt_file)
 match_list = sample_parser.find_matches(next(os.walk(samples_dir))[1], gt_parsed)
 gt = pandas.concat(sample_parser.split_gt(gt_parsed, match_list)).reset_index(drop=True)
 panel = sample_parser.parse_bed(bed_file)
+positions = analysis.get_positions(panel)
 
 # DataFrame terminal display options
 pandas.set_option('display.max_columns', 14)
 pandas.set_option('display.max_rows', 13)
 pandas.set_option('display.width', 300)
 
-print(gt)
+print(positions.shape[0])
 
 # Initialize analysis DataFrame
 analysis_df = pandas.DataFrame({'ANALYSIS':['True Positives','False Positives',\
@@ -41,17 +42,18 @@ for caller in sample_parser.get_caller_names(df):
 
     # True positives DataFrame
     tp = analysis.get_true_positives(df, caller)
-    # True negatives in DataFrame
-    # tn = analysis.get_true_negatives(df, caller, analysis.get_positions(panel))
     # False positives DataFrame
-    # fp = analysis.get_false_positives(df, caller)
+    fp = analysis.get_false_positives(df, caller)
     # False negatives DataFrame
     fn = analysis.get_false_negatives(tp, gt)
+    # True negatives in DataFrame
+    tn = analysis.get_true_negatives(fp, caller, positions)
+    # tn.to_csv(os.path.join(samples_dir, caller + '_tn.tab'), sep='\t', encoding='utf-8', index=False)
 
     # Count rows in DataFrames
     tps = tp.shape[0]
-    # tns = tn.shape[0]
-    # fps = fp.shape[0]
+    tns = tn.shape[0]
+    fps = fp.shape[0]
     fns = fn.shape[0]
 
     # Analysis
@@ -60,9 +62,13 @@ for caller in sample_parser.get_caller_names(df):
     # fnr = fns / (fns + tps)
     # fdr = fps / (fps + tps)
 
-    print(tp)
-    print(fn)
     # print(tps+fns)
+    print(fps+tns)
+    # print(fp)
+    # print(tns)
+    # print(fp)
+    # print(fns)
+    # print(fp)
 
     # analysis_df[caller] = [tps, fps, fns, tpr, ppv, fnr, fdr]
 

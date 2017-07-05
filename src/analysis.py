@@ -6,6 +6,8 @@ def get_true_positives(df, caller_name):
             if reportable and not df[caller_name][i] == './.']].reset_index(drop=True)
 
 # Covered, not reportable
+# Sometimes a caller will find multiple mutations in the same location. These
+# are counted as separate false positives
 def get_false_positives(df, caller_name):
     return df.iloc[[i for i, covered in enumerate(df['COVERED'])\
             if covered and not df['REPORTABLE'][i]\
@@ -37,11 +39,20 @@ def get_positions(panel):
         chromosomes += len(pos_list) * [panel['CHROMOSOME'][i]]
     return pandas.DataFrame({ 'POSITION' : positions,\
                               'GENE' : genes,\
-                              'CHROMOSOME' : chromosomes })
+                              'CHROMOSOME' : chromosomes }).reset_index(drop=True)
 
 # Returns list of positions which were not called (correctly) and were covered
 # by the small panel
-def get_true_negatives(df, caller_name, positions):
-    covered = df.iloc[[i for i, covered in enumerate(df['COVERED']) if covered\
-            and not df[caller_name][i] == './.']].reset_index(drop=True)
-    return positions.iloc[[i for i, pos in enumerate(positions['POSITION']) if not pos in covered['POSITION'].tolist()]].reset_index(drop=True)
+def get_true_negatives(fp, caller_name, positions):
+    covered = fp.iloc[[i for i, covered in enumerate(fp['COVERED']) if covered\
+            and not fp[caller_name][i] == './.']].reset_index(drop=True)
+    indices = []
+    for sample in list(set(covered['SAMPLE_ID'])):
+        sample_covered = covered.iloc[[i for i, sample_id in enumerate(covered['SAMPLE_ID']) if sample_id == sample]].reset_index(drop=True)
+        for p in range(0, positions.shape[0]):
+            if int(positions['POSITION'][p]) in covered['POSITION'].astype(int).tolist():
+                for c in range(0, covered.shape[0]):
+                    if int(positions['POSITION'][p]) == int(covered['POSITION'][c]) and str(positions['GENE'][p]) == str(covered['GENE'][c]) and str(positions['CHROMOSOME'][p]) == str(covered['CHROMOSOME'][c]):
+                        indices.append(p)
+    return positions.drop(positions.index[indices])
+    # return positions.iloc[[i for i, pos in enumerate(positions['POSITION']) if not (pos in covered['POSITION'].tolist() and positions['CHROMOSOME'][i] in covered['CHROMOSOME'] and positions['GENE'][i] in covered['GENE'])]].reset_index(drop=True)
