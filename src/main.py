@@ -29,7 +29,7 @@ pandas.set_option('display.max_columns', 14)
 pandas.set_option('display.max_rows', 13)
 pandas.set_option('display.width', 300)
 
-print(positions.shape[0])
+print(positions.shape[0] * 7)
 
 # Initialize analysis DataFrame
 analysis_df = pandas.DataFrame({'ANALYSIS':['True Positives', 'True Negatives', 'False Positives', 'False Negatives', 'True Positive Rate', 'True Negative Rate', 'Positive Predictive Value', 'Negative Predictive Value', 'False Negative Rate', 'False Positive Rate', 'False Discovery Rate', 'False Omission Rate', 'Accuracy', 'Matthews Correlation Coefficient']})
@@ -52,6 +52,11 @@ for caller in sample_parser.get_caller_names(df):
     tn = tn_df.shape[0]
     fp = fp_df.shape[0]
     fn = fn_df.shape[0]
+
+    print(tn_df)
+    print(fp+tn)
+    print(fp)
+    print(tn)
 
     # Analysis
     tpr = tp / (tp + fn) # True positive rate (sensitivity)

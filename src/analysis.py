@@ -43,16 +43,22 @@ def get_positions(panel):
 
 # Returns list of positions which were not called (correctly) and were covered
 # by the small panel
+# TODO speed up
 def get_true_negatives(fp, caller_name, positions):
-    covered = fp.iloc[[i for i, covered in enumerate(fp['COVERED']) if covered\
+    all_covered = fp.iloc[[i for i, covered in enumerate(fp['COVERED']) if covered\
             and not fp[caller_name][i] == './.']].reset_index(drop=True)
-    indices = []
-    for sample in list(set(covered['SAMPLE_ID'])):
-        sample_covered = covered.iloc[[i for i, sample_id in enumerate(covered['SAMPLE_ID']) if sample_id == sample]].reset_index(drop=True)
-        for p in range(0, positions.shape[0]):
+    samples = list(set(fp['SAMPLE_ID']))
+    # Each sample has the same covered positions
+    all_positions = pandas.DataFrame(columns=['SAMPLE_ID', 'POSITION', 'CHROMOSOME', 'GENE'])
+    for sample in samples:
+        indices = []
+        positions['SAMPLE_ID'] = [sample] * len(positions)
+        covered = all_covered.iloc[[i for i, sample_id in enumerate(all_covered['SAMPLE_ID']) if sample_id == sample]].reset_index(drop=True)
+        for p in [i for i, pos in enumerate(positions['POSITION']) if pos in covered['POSITION'].tolist()]:
             if int(positions['POSITION'][p]) in covered['POSITION'].astype(int).tolist():
                 for c in range(0, covered.shape[0]):
                     if int(positions['POSITION'][p]) == int(covered['POSITION'][c]) and str(positions['GENE'][p]) == str(covered['GENE'][c]) and str(positions['CHROMOSOME'][p]) == str(covered['CHROMOSOME'][c]):
                         indices.append(p)
-    return positions.drop(positions.index[indices])
+        all_positions = pandas.concat([all_positions, positions.drop(positions.index[indices])], ignore_index=True)
+    return all_positions
     # return positions.iloc[[i for i, pos in enumerate(positions['POSITION']) if not (pos in covered['POSITION'].tolist() and positions['CHROMOSOME'][i] in covered['CHROMOSOME'] and positions['GENE'][i] in covered['GENE'])]].reset_index(drop=True)
