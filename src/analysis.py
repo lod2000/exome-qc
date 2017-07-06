@@ -1,8 +1,10 @@
+import math
+
 import pandas
 
 import sample_parser
 
-# Reportable
+# Returns DataFrame of true positives (reportables)
 def get_true_positives(df, caller_name):
     return df.iloc[[
             i for i, reportable in enumerate(df['REPORTABLE'])
@@ -19,6 +21,7 @@ def get_false_positives(df, caller_name):
             and not df[caller_name][i] == './.'
     ]].reset_index(drop=True)
 
+# Returns DataFrame from ground truth of variants not detected by caller
 def get_false_negatives(tp, gt):
     return gt.iloc[[
             i for i in range(0, gt.shape[0])
@@ -72,8 +75,62 @@ def get_true_negatives(fp, caller_name, panel):
                 ignore_index=True
         )
     return all_positions
-    # return positions.iloc[[i for i, pos in enumerate(positions['POSITION']) if not (pos in covered['POSITION'].tolist() and positions['CHROMOSOME'][i] in covered['CHROMOSOME'] and positions['GENE'][i] in covered['GENE'])]].reset_index(drop=True)
 
+# Returns DataFrame of analysis
+def analyze_callers(df, panel, gt):
+    # Initialize analysis DataFrame
+    analysis_df = pandas.DataFrame({
+            'ANALYSIS' : ['True Positives', 'True Negatives',
+            'False Positives', 'False Negatives', 'True Positive Rate',
+            'True Negative Rate', 'Positive Predictive Value',
+            'Negative Predictive Value', 'False Negative Rate',
+            'False Positive Rate', 'False Discovery Rate',
+            'False Omission Rate',
+            'Accuracy', 'Matthews Correlation Coefficient']
+    })
+
+    for caller in sample_parser.get_caller_names(df):
+        print('\n')
+        print(caller)
+
+        # True positives DataFrame
+        tp_df = get_true_positives(df, caller)
+        # False positives DataFrame
+        fp_df = get_false_positives(df, caller)
+        # True negatives in DataFrame
+        tn_df = get_true_negatives(fp_df, caller, panel)
+        # False negatives DataFrame
+        fn_df = get_false_negatives(tp_df, gt)
+
+        # Count rows in DataFrames
+        tp = tp_df.shape[0]
+        tn = tn_df.shape[0]
+        print(tn)
+        fp = fp_df.shape[0]
+        print(fp)
+        fn = fn_df.shape[0]
+
+        # Analysis
+        tpr = tp / (tp + fn) # True positive rate (sensitivity)
+        tnr = tn / (tn + fp) # True negative rate (specificity)
+        ppv = tp / (tp + fp) # Positive predictive value (precision)
+        npv = tn / (tn + fn) # Negative predictive value
+        fnr = fn / (fn + tp) # False negative rate (miss rate)
+        fpr = fp / (fp + tn) # False positive rate (fall-out)
+        fdr = fp / (fp + tp) # False discovery rate
+        fom = fn / (fn + tn) # False omission rate
+        acc = (tp + tn) / (tp + tn + fp + fn) # Accuracy
+        # Matthews correlation coefficient
+        mcc = ((tp * tn - fp * fn)
+                / math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)))
+
+        analysis_df[caller] = [
+                tp, tn, fp, fn, tpr, tnr, ppv, npv, fnr, fpr, fdr, fom, acc, mcc
+        ]
+
+    return analysis_df
+
+# WIP
 def generate_combined_caller(df):
     callers = sample_parser.get_caller_names(df)
     diff_sum = 1
@@ -88,3 +145,11 @@ def generate_combined_caller(df):
             diff = (true_status - weighted_sum) ** 2
             diff_sum += diff
         print(diff_sum)
+
+def add_x_or_more(df):
+    for cutoff in range(2, len(sample_parser.get_caller_names(df)) + 1):
+        name = 'GT_' + str(cutoff) + '_OR_MORE'
+        df[name] = [
+                True if callers >= cutoff else './.'
+                for callers in df['TOTAL_CALLERS']
+        ]

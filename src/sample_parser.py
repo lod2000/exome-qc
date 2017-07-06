@@ -1,4 +1,12 @@
-import pandas, re, os, numpy, time, sys
+import re
+import os
+import time
+import sys
+
+import pandas
+import numpy
+
+import analysis
 
 # Parse the ground truth file into a DataFrame
 def parse_gt(excel_file):
@@ -241,6 +249,7 @@ def combine(gt_file, bed_file, samples_dir):
     # Add covered and reportable lists to DataFrame
     df['COVERED'] = covered_list
     df['REPORTABLE'] = reportables_list
+    analysis.add_x_or_more(df)
     # Create combined tab file
     df.to_csv(
             os.path.join(samples_dir, 'combined.tab'), sep='\t',
