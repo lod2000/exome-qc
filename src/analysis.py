@@ -155,15 +155,18 @@ def add_x_or_more(df):
         ]
 
 # WIP
-def add_unions(df):
+def add_differences(df):
     callers = sample_parser.get_og_caller_names(df)
+    all_except = list(callers)
     for caller1 in callers:
-        all_except = list(callers)
         all_except.remove(caller1)
+        print(caller1)
+        print(all_except)
+        # callers.remove(caller1)
         for caller2 in all_except:
             name = 'COMB_' + caller1.split('_')[-1] + '_U_' + caller2.split('_')[-1]
             df[name] = [
                     True if not df[caller1][i] == './.'
-                    or not df[caller2][i] == './.'
+                    and not df[caller2][i] == './.'
                     else './.' for i in range(0, df.shape[0])
             ]

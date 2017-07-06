@@ -39,6 +39,8 @@ pandas.set_option('display.width', 300)
 
 # analysis.generate_combined_caller(df)
 
+analysis.add_differences(df)
+
 analysis_df = analysis.analyze_callers(df, panel, gt)
 analysis_file = os.path.join(data_path, 'analysis.csv')
 try:

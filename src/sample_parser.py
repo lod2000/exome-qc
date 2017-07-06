@@ -254,7 +254,7 @@ def combine(gt_file, bed_file, samples_dir):
     df['COVERED'] = covered_list
     df['REPORTABLE'] = reportables_list
     analysis.add_x_or_more(df)
-    analysis.add_unions(df)
+    analysis.add_differences(df)
     # Create combined tab file
     df.to_csv(
             os.path.join(samples_dir, 'combined.tab'), sep='\t',
