@@ -73,3 +73,18 @@ def get_true_negatives(fp, caller_name, panel):
         )
     return all_positions
     # return positions.iloc[[i for i, pos in enumerate(positions['POSITION']) if not (pos in covered['POSITION'].tolist() and positions['CHROMOSOME'][i] in covered['CHROMOSOME'] and positions['GENE'][i] in covered['GENE'])]].reset_index(drop=True)
+
+def generate_combined_caller(df):
+    callers = sample_parser.get_caller_names(df)
+    diff_sum = 1
+    weights = [1] * len(callers)
+    while diff_sum > 0.1:
+        for i in range(0, df.shape[0]):
+            true_status = int(df['REPORTABLE'][i] == True)
+            weighted_sum = 0
+            for k, caller in enumerate(callers):
+                call = int(not df[caller][i] == './.')
+                weighted_sum += weights[k] * call
+            diff = (true_status - weighted_sum) ** 2
+            diff_sum += diff
+        print(diff_sum)

@@ -51,43 +51,44 @@ analysis_df = pandas.DataFrame({
 for caller in sample_parser.get_caller_names(df):
     print('\n')
     print(caller)
+    analysis.generate_combined_caller(df)
 
     # True positives DataFrame
-    tp_df = analysis.get_true_positives(df, caller)
+    # tp_df = analysis.get_true_positives(df, caller)
     # False positives DataFrame
-    fp_df = analysis.get_false_positives(df, caller)
+    # fp_df = analysis.get_false_positives(df, caller)
     # True negatives in DataFrame
-    tn_df = analysis.get_true_negatives(fp_df, caller, panel)
+    # tn_df = analysis.get_true_negatives(fp_df, caller, panel)
     # False negatives DataFrame
-    fn_df = analysis.get_false_negatives(tp_df, gt)
+    # fn_df = analysis.get_false_negatives(tp_df, gt)
 
     # Count rows in DataFrames
-    tp = tp_df.shape[0]
-    tn = tn_df.shape[0]
-    fp = fp_df.shape[0]
-    fn = fn_df.shape[0]
+    # tp = tp_df.shape[0]
+    # tn = tn_df.shape[0]
+    # fp = fp_df.shape[0]
+    # fn = fn_df.shape[0]
 
     # Analysis
-    tpr = tp / (tp + fn) # True positive rate (sensitivity)
-    tnr = tn / (tn + fp) # True negative rate (specificity)
-    ppv = tp / (tp + fp) # Positive predictive value (precision)
-    npv = tn / (tn + fn) # Negative predictive value
-    fnr = fn / (fn + tp) # False negative rate (miss rate)
-    fpr = fp / (fp + tn) # False positive rate (fall-out)
-    fdr = fp / (fp + tp) # False discovery rate
-    fom = fn / (fn + tn) # False omission rate
-    acc = (tp + tn) / (tp + tn + fp + fn) # Accuracy
+    # tpr = tp / (tp + fn) # True positive rate (sensitivity)
+    # tnr = tn / (tn + fp) # True negative rate (specificity)
+    # ppv = tp / (tp + fp) # Positive predictive value (precision)
+    # npv = tn / (tn + fn) # Negative predictive value
+    # fnr = fn / (fn + tp) # False negative rate (miss rate)
+    # fpr = fp / (fp + tn) # False positive rate (fall-out)
+    # fdr = fp / (fp + tp) # False discovery rate
+    # fom = fn / (fn + tn) # False omission rate
+    # acc = (tp + tn) / (tp + tn + fp + fn) # Accuracy
     # Matthews correlation coefficient
-    mcc = ((tp * tn - fp * fn)
-            / math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)))
+    # mcc = ((tp * tn - fp * fn)
+    #         / math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)))
 
-    analysis_df[caller] = [
-            tp, tn, fp, fn, tpr, tnr, ppv, npv, fnr, fpr, fdr, fom, acc, mcc
-    ]
+    # analysis_df[caller] = [
+    #         tp, tn, fp, fn, tpr, tnr, ppv, npv, fnr, fpr, fdr, fom, acc, mcc
+    # ]
 
-analysis_file = os.path.join(data_path, 'analysis.csv')
-try:
-    analysis_df.to_csv(analysis_file, sep='\t', encoding='utf-8', index=False)
-except PermissionError:
-    print('Another program is using the file analysis.csv.\
-           Please close and try again.')
+# analysis_file = os.path.join(data_path, 'analysis.csv')
+# try:
+#     analysis_df.to_csv(analysis_file, sep='\t', encoding='utf-8', index=False)
+# except PermissionError:
+#     print('Another program is using the file analysis.csv.\
+#            Please close and try again.')
