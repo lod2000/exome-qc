@@ -1,5 +1,7 @@
 import pandas
 
+import sample_parser
+
 # Reportable
 def get_true_positives(df, caller_name):
     return df.iloc[[
@@ -34,27 +36,11 @@ def get_unclassified(df, caller_name):
             and not df[caller_name][i] == './.'
     ]].reset_index(drop=True)
 
-# TODO does the 'end' position include the last covered position?
-# Returns a DataFrame of individual positions, genes, and chromosomes covered
-def get_positions(panel):
-    positions = []
-    genes = []
-    chromosomes = []
-    for i in range(0, panel.shape[0]):
-        pos_list = list(range(panel['START'][i], panel['END'][i]))
-        positions += pos_list
-        genes += len(pos_list) * [panel['GENE'][i]]
-        chromosomes += len(pos_list) * [panel['CHROMOSOME'][i]]
-    return pandas.DataFrame({
-            'POSITION' : positions,
-            'GENE' : genes,
-            'CHROMOSOME' : chromosomes
-    }).reset_index(drop=True)
-
 # Returns list of positions which were not called (correctly) and were covered
 # by the small panel
 # TODO speed up
-def get_true_negatives(fp, caller_name, positions):
+def get_true_negatives(fp, caller_name, panel):
+    positions = sample_parser.split_panel(panel)
     all_covered = fp.iloc[[
             i for i, covered in enumerate(fp['COVERED'])
             if covered and not fp[caller_name][i] == './.'

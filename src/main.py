@@ -32,14 +32,11 @@ gt = pandas.concat(
         sample_parser.split_gt(gt_parsed, match_list)
 ).reset_index(drop=True)
 panel = sample_parser.parse_bed(bed_file)
-positions = analysis.get_positions(panel)
 
 # DataFrame terminal display options
 pandas.set_option('display.max_columns', 14)
 pandas.set_option('display.max_rows', 13)
 pandas.set_option('display.width', 300)
-
-print(positions.shape[0] * 7)
 
 # Initialize analysis DataFrame
 analysis_df = pandas.DataFrame({
@@ -60,7 +57,7 @@ for caller in sample_parser.get_caller_names(df):
     # False positives DataFrame
     fp_df = analysis.get_false_positives(df, caller)
     # True negatives in DataFrame
-    tn_df = analysis.get_true_negatives(fp_df, caller, positions)
+    tn_df = analysis.get_true_negatives(fp_df, caller, panel)
     # False negatives DataFrame
     fn_df = analysis.get_false_negatives(tp_df, gt)
 
@@ -69,10 +66,6 @@ for caller in sample_parser.get_caller_names(df):
     tn = tn_df.shape[0]
     fp = fp_df.shape[0]
     fn = fn_df.shape[0]
-
-    print(fp+tn)
-    print(fp)
-    print(tn)
 
     # Analysis
     tpr = tp / (tp + fn) # True positive rate (sensitivity)

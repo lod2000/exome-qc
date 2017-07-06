@@ -69,6 +69,23 @@ def parse_bed(bed):
     parsed['GENE'] = genes
     return parsed
 
+# TODO does the 'end' position include the last covered position?
+# Returns a DataFrame of individual positions, genes, and chromosomes covered
+def split_panel(panel):
+    positions = []
+    genes = []
+    chromosomes = []
+    for i in range(0, panel.shape[0]):
+        pos_list = list(range(panel['START'][i], panel['END'][i]))
+        positions += pos_list
+        genes += len(pos_list) * [panel['GENE'][i]]
+        chromosomes += len(pos_list) * [panel['CHROMOSOME'][i]]
+    return pandas.DataFrame({
+            'POSITION' : positions,
+            'GENE' : genes,
+            'CHROMOSOME' : chromosomes
+    }).reset_index(drop=True)
+
 # Takes a list of sample IDs and ground truth DataFrame
 # These will be slightly different, so this method matches IDs from the first
 # list to names from the second.
@@ -79,7 +96,6 @@ def find_matches(sample_ids, gt_parsed):
     # first item = name of sample folder,
     # second item = ID in ground truth
     match_list = []
-
     # Search for similar ID in ground truth
     candidate_ids = set(gt_parsed['SAMPLE_ID']) # List of IDs in ground truth
     for sample_id in sample_ids:
@@ -91,7 +107,6 @@ def find_matches(sample_ids, gt_parsed):
             # or if all the parts of the candidate ID are present in the sample
             if candidate in sample or all(x in sample for x in candidate_list):
                 match_list.append((sample_id, candidate_id))
-
     return match_list
 
 # Splits ground truth parsed data frame into separate data frames for each ID
@@ -140,7 +155,7 @@ def get_samples(samples_dir, match_list):
                 'CHROMOSOME', 'POSITION', 'TOTAL_CALLERS',
                 'SNPEFF_ANNOTATED_GENE', 'SNPEFF_ANNOTATED_DNA_CHANGE',
                 'SNPEFF_ANNOTATED_PROTEIN_CHANGE', 'EXAC_FREQ_ESTIMATE',
-                '1KG_FREQ_ESTIMATE'
+                '1KG_FREQ_ESTIMATE', 'TARGET_ALLELE_COUNT',
         ] + caller_names
         # New sample DataFrame with relevant columns only
         altered_df = sample_df[col_list].rename(columns={
@@ -202,6 +217,8 @@ def combine(gt_file, bed_file, samples_dir):
                 if (df['CHROMOSOME'][s] == bed['CHROMOSOME'][n]
                         and int(df['POSITION'][s]) >= bed['START'][n]
                         and int(df['POSITION'][s]) <= bed['END'][n]):
+                # if (df['CHROMOSOME'][s] == bed['CHROMOSOME'][n]
+                #         and int(df['POSITION'][s]) == bed['POSITION'][n]):
                     covered_list[s] = True
 
         # Find variants reported in the ground truth
