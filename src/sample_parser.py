@@ -3,7 +3,9 @@ import pandas, re, os, numpy, time, sys
 # Parse the ground truth file into a DataFrame
 def parse_gt(excel_file):
     # Create data frame from Excel file
-    df = pandas.read_excel(excel_file, 'Sheet2', index_col=None, na_values=['NA'])
+    df = pandas.read_excel(
+            excel_file, 'Sheet2', index_col=None, na_values=['NA']
+    )
     # These two columns are the only ones we care about
     ids = df['SAMPLE ID']
     variants = df['"REPORTABLE" VARIANTS CHECKED in PPMP 0.3.1']
@@ -18,19 +20,19 @@ def parse_gt(excel_file):
         sample_id = ids[index]
         # Split each line of the last column into gene, dna, and protein info
         for variant in sample_variants:
-            if not re.search('^NOTE', variant)\
-                    and not variant == ''\
-                    and not re.search('^Missed', variant):
+            if (not re.search('^NOTE', variant)
+                    and not variant == ''
+                    and not re.search('^Missed', variant)):
                 genes.append(variant.split(' ')[0])
                 sample_ids.append(sample_id)
-
+                # Get DNA change
                 try:
                     dna_change = re.search('c\..*[A-Z]:', variant).group(0)\
                             .split(':')[0]
                 except AttributeError:
                     dna_change = ''
                 dna_changes.append(dna_change)
-
+                # Get protein change
                 try:
                     protein_change = re.search('p\..*$', variant).group(0)
                 except AttributeError:
@@ -57,9 +59,12 @@ def parse_gt(excel_file):
     return output
 
 def parse_bed(bed):
-    parsed = pandas.read_csv(bed, names=['CHROMOSOME', 'START', 'END', 'GENE'], sep='\t')
-    genes = [re.search('_[A-Z0-9]*_', gene_string).group(0).split('_')[1]\
-             for gene_string in parsed['GENE']
+    parsed = pandas.read_csv(
+            bed, names=['CHROMOSOME', 'START', 'END', 'GENE'], sep='\t'
+    )
+    genes = [
+            re.search('_[A-Z0-9]*_', gene_string).group(0).split('_')[1]
+            for gene_string in parsed['GENE']
     ]
     parsed['GENE'] = genes
     return parsed
@@ -122,22 +127,27 @@ def get_samples(samples_dir, match_list):
         gt_id = sample[1]
         # Get sample file path
         sample_path = os.path.join(samples_dir, sample_id)
-        tab_path = os.path.join(sample_path, next(os.walk(sample_path))[1][0],\
-                'vDEMO1', 'r1', 'hg19', 'panel', 'ann.target_transcripts.tab')
+        tab_path = os.path.join(
+                sample_path, next(os.walk(sample_path))[1][0],
+                'vDEMO1', 'r1', 'hg19', 'panel', 'ann.target_transcripts.tab'
+        )
         # Import sample CSV
         sample_df = pandas.read_csv(tab_path, sep='\t')
         # Get variant caller names
         caller_names = get_caller_names(sample_df)
         # List of columns to keep
-        col_list = ['CHROMOSOME', 'POSITION', 'TOTAL_CALLERS',\
-                'SNPEFF_ANNOTATED_GENE', 'SNPEFF_ANNOTATED_DNA_CHANGE',\
-                'SNPEFF_ANNOTATED_PROTEIN_CHANGE', 'EXAC_FREQ_ESTIMATE',\
-                '1KG_FREQ_ESTIMATE'] + caller_names
+        col_list = [
+                'CHROMOSOME', 'POSITION', 'TOTAL_CALLERS',
+                'SNPEFF_ANNOTATED_GENE', 'SNPEFF_ANNOTATED_DNA_CHANGE',
+                'SNPEFF_ANNOTATED_PROTEIN_CHANGE', 'EXAC_FREQ_ESTIMATE',
+                '1KG_FREQ_ESTIMATE'
+        ] + caller_names
         # New sample DataFrame with relevant columns only
-        altered_df = sample_df[col_list].rename(columns={\
-                'SNPEFF_ANNOTATED_GENE': 'GENE',\
-                'SNPEFF_ANNOTATED_DNA_CHANGE': 'DNA_CHANGE',\
-                'SNPEFF_ANNOTATED_PROTEIN_CHANGE': 'PROTEIN_CHANGE'})
+        altered_df = sample_df[col_list].rename(columns={
+                'SNPEFF_ANNOTATED_GENE': 'GENE',
+                'SNPEFF_ANNOTATED_DNA_CHANGE': 'DNA_CHANGE',
+                'SNPEFF_ANNOTATED_PROTEIN_CHANGE': 'PROTEIN_CHANGE'
+        })
         # Add SAMPLE_ID column (for when this DataFrame will be merged with others)
         altered_df['SAMPLE_ID'] = sample_df.shape[0] * [gt_id]
         # Add sample DataFrame to list
@@ -182,26 +192,30 @@ def combine(gt_file, bed_file, samples_dir):
         # Find variants covered by the small panel
         # If the gene is covered by the small panel
         if df['GENE'][s] in set(bed['GENE']):
+            covered_genes = [
+                    x for x, gene in enumerate(bed['GENE'])
+                    if gene == df['GENE'][s]
+            ]
             # List of possible locations in small panel coverage file
-            for n in [x for x, gene in enumerate(bed['GENE']) if gene == df['GENE'][s]]:
+            for n in covered_genes:
                 # If variant position is in a location covered by the small panel
-                if df['CHROMOSOME'][s] == bed['CHROMOSOME'][n]\
-                        and int(df['POSITION'][s]) >= bed['START'][n]\
-                        and int(df['POSITION'][s]) <= bed['END'][n]:
+                if (df['CHROMOSOME'][s] == bed['CHROMOSOME'][n]
+                        and int(df['POSITION'][s]) >= bed['START'][n]
+                        and int(df['POSITION'][s]) <= bed['END'][n]):
                     covered_list[s] = True
 
         # Find variants reported in the ground truth
         # This if statement weeds out unnecessary checks
-        if df['GENE'][s] in gt['GENE'].tolist()\
-                and df['DNA_CHANGE'][s] in gt['DNA_CHANGE'].tolist()\
-                and df['PROTEIN_CHANGE'][s] in gt['PROTEIN_CHANGE'].tolist():
+        if (df['GENE'][s] in gt['GENE'].tolist()
+                and df['DNA_CHANGE'][s] in gt['DNA_CHANGE'].tolist()
+                and df['PROTEIN_CHANGE'][s] in gt['PROTEIN_CHANGE'].tolist()):
             # Cycle through variants in ground truth
             for g in range(0, gt.shape[0]):
                 # If the variant info matches between the DataFrame and ground truth
-                if df['SAMPLE_ID'][s] == gt['SAMPLE_ID'][g]\
-                        and df['GENE'][s] == gt['GENE'][g]\
-                        and df['DNA_CHANGE'][s] == gt['DNA_CHANGE'][g]\
-                        and df['PROTEIN_CHANGE'][s] == gt['PROTEIN_CHANGE'][g]:
+                if (df['SAMPLE_ID'][s] == gt['SAMPLE_ID'][g]
+                        and df['GENE'][s] == gt['GENE'][g]
+                        and df['DNA_CHANGE'][s] == gt['DNA_CHANGE'][g]
+                        and df['PROTEIN_CHANGE'][s] == gt['PROTEIN_CHANGE'][g]):
                     reportables_list[s] = True
 
     sys.stdout.write('\b\b\b100%')
@@ -211,7 +225,10 @@ def combine(gt_file, bed_file, samples_dir):
     df['COVERED'] = covered_list
     df['REPORTABLE'] = reportables_list
     # Create combined tab file
-    df.to_csv(os.path.join(samples_dir, 'combined.tab'), sep='\t', encoding='utf-8', index=False)
+    df.to_csv(
+            os.path.join(samples_dir, 'combined.tab'), sep='\t',
+            encoding='utf-8', index=False
+    )
     print('\nOutput to file ' + os.path.join(samples_dir, 'combined.tab'))
 
 if __name__ == "__main__":
@@ -219,16 +236,20 @@ if __name__ == "__main__":
 
     # Parser / command line instructions
     # Description of script
-    arg_parser = argparse.ArgumentParser(description='Compares sample variants to\
+    arg_parser = argparse.ArgumentParser(
+            description='Compares sample variants to\
             ground truth file and produces false negatives, false positives,\
-            and true positives.')
+            and true positives.'
+    )
     # First argument: ground truth Excel file
     arg_parser.add_argument('file1', help='ground truth .xlsx', action='store')
     # Second argument: small panel gene list, bed file
     arg_parser.add_argument('file2', help='.bed', action='store')
     # Third argument: directory containing sample directories
-    arg_parser.add_argument('directory', help='directory containing all sample\
-            directories', action='store')
+    arg_parser.add_argument(
+            'directory', help='directory containing all sample directories',
+            action='store'
+    )
 
     # Parse arguments
     args = arg_parser.parse_args()

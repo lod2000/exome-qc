@@ -1,5 +1,12 @@
-import os, pandas, sys, glob, math
-import sample_parser, analysis
+import os
+import math
+import sys
+import glob
+
+import pandas
+
+import sample_parser
+import analysis
 
 # Get path to this file
 src_path = sys.path[0]
@@ -19,8 +26,11 @@ df = pandas.read_csv(df_file, sep='\t', low_memory=False)
 # Convert SAMPLE_IDs to Strings
 df['SAMPLE_ID'] = df['SAMPLE_ID'].astype(str)
 gt_parsed = sample_parser.parse_gt(gt_file)
-match_list = sample_parser.find_matches(next(os.walk(samples_dir))[1], gt_parsed)
-gt = pandas.concat(sample_parser.split_gt(gt_parsed, match_list)).reset_index(drop=True)
+match_list = sample_parser.find_matches(
+        next(os.walk(samples_dir))[1], gt_parsed)
+gt = pandas.concat(
+        sample_parser.split_gt(gt_parsed, match_list)
+).reset_index(drop=True)
 panel = sample_parser.parse_bed(bed_file)
 positions = analysis.get_positions(panel)
 
@@ -32,7 +42,14 @@ pandas.set_option('display.width', 300)
 print(positions.shape[0] * 7)
 
 # Initialize analysis DataFrame
-analysis_df = pandas.DataFrame({'ANALYSIS':['True Positives', 'True Negatives', 'False Positives', 'False Negatives', 'True Positive Rate', 'True Negative Rate', 'Positive Predictive Value', 'Negative Predictive Value', 'False Negative Rate', 'False Positive Rate', 'False Discovery Rate', 'False Omission Rate', 'Accuracy', 'Matthews Correlation Coefficient']})
+analysis_df = pandas.DataFrame({
+        'ANALYSIS' : ['True Positives', 'True Negatives',
+        'False Positives', 'False Negatives', 'True Positive Rate',
+        'True Negative Rate', 'Positive Predictive Value',
+        'Negative Predictive Value', 'False Negative Rate',
+        'False Positive Rate', 'False Discovery Rate', 'False Omission Rate',
+        'Accuracy', 'Matthews Correlation Coefficient']
+})
 
 for caller in sample_parser.get_caller_names(df):
     print('\n')
@@ -53,7 +70,6 @@ for caller in sample_parser.get_caller_names(df):
     fp = fp_df.shape[0]
     fn = fn_df.shape[0]
 
-    print(tn_df)
     print(fp+tn)
     print(fp)
     print(tn)
@@ -69,12 +85,16 @@ for caller in sample_parser.get_caller_names(df):
     fom = fn / (fn + tn) # False omission rate
     acc = (tp + tn) / (tp + tn + fp + fn) # Accuracy
     # Matthews correlation coefficient
-    mcc = (tp * tn - fp * fn) / math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn))
+    mcc = ((tp * tn - fp * fn)
+            / math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)))
 
-    analysis_df[caller] = [tp, tn, fp, fn, tpr, tnr, ppv, npv, fnr, fpr, fdr, fom, acc, mcc]
+    analysis_df[caller] = [
+            tp, tn, fp, fn, tpr, tnr, ppv, npv, fnr, fpr, fdr, fom, acc, mcc
+    ]
 
 analysis_file = os.path.join(data_path, 'analysis.csv')
 try:
     analysis_df.to_csv(analysis_file, sep='\t', encoding='utf-8', index=False)
 except PermissionError:
-    print('Another program is using the file analysis.csv. Please close and try again.')
+    print('Another program is using the file analysis.csv.\
+           Please close and try again.')
