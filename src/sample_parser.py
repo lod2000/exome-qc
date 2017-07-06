@@ -135,9 +135,13 @@ def split_gt(gt_parsed, match_list):
     return gt_df_list
 
 # Returns the names of the variant callers
-def get_caller_names(sample):
+def get_og_caller_names(sample):
     headers = list(sample)
     return [h for h in headers if re.search('^GT_', h)]
+
+def get_caller_names(sample):
+    headers = list(sample)
+    return [h for h in headers if re.search('^GT_', h) or re.search('^COMB_', h)]
 
 # Returns a list of DataFrames of samples for which matches exist in the ground
 # truth
@@ -250,6 +254,7 @@ def combine(gt_file, bed_file, samples_dir):
     df['COVERED'] = covered_list
     df['REPORTABLE'] = reportables_list
     analysis.add_x_or_more(df)
+    analysis.add_unions(df)
     # Create combined tab file
     df.to_csv(
             os.path.join(samples_dir, 'combined.tab'), sep='\t',

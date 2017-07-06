@@ -132,7 +132,7 @@ def analyze_callers(df, panel, gt):
 
 # WIP
 def generate_combined_caller(df):
-    callers = sample_parser.get_caller_names(df)
+    callers = sample_parser.get_og_caller_names(df)
     diff_sum = 1
     weights = [1] * len(callers)
     while diff_sum > 0.1:
@@ -147,9 +147,23 @@ def generate_combined_caller(df):
         print(diff_sum)
 
 def add_x_or_more(df):
-    for cutoff in range(2, len(sample_parser.get_caller_names(df)) + 1):
-        name = 'GT_' + str(cutoff) + '_OR_MORE'
+    for cutoff in range(2, len(sample_parser.get_og_caller_names(df)) + 1):
+        name = 'COMB_' + str(cutoff) + '_OR_MORE'
         df[name] = [
                 True if callers >= cutoff else './.'
                 for callers in df['TOTAL_CALLERS']
         ]
+
+# WIP
+def add_unions(df):
+    callers = sample_parser.get_og_caller_names(df)
+    for caller1 in callers:
+        all_except = list(callers)
+        all_except.remove(caller1)
+        for caller2 in all_except:
+            name = 'COMB_' + caller1.split('_')[-1] + '_U_' + caller2.split('_')[-1]
+            df[name] = [
+                    True if not df[caller1][i] == './.'
+                    or not df[caller2][i] == './.'
+                    else './.' for i in range(0, df.shape[0])
+            ]
