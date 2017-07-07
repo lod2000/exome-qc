@@ -104,11 +104,13 @@ def analyze_callers(df, panel, gt):
 
         # Count rows in DataFrames
         tp = tp_df.shape[0]
+        print(tp)
         tn = tn_df.shape[0]
-        print(tn)
+        # print(tn)
         fp = fp_df.shape[0]
-        print(fp)
+        # print(fp)
         fn = fn_df.shape[0]
+        print(fn)
 
         # Analysis
         tpr = tp / (tp + fn) # True positive rate (sensitivity)
@@ -146,13 +148,19 @@ def generate_combined_caller(df):
             diff_sum += diff
         print(diff_sum)
 
-def add_x_or_more(df):
-    for cutoff in range(2, len(sample_parser.get_og_caller_names(df)) + 1):
-        name = 'COMB_' + str(cutoff) + '_OR_MORE'
-        df[name] = [
-                True if callers >= cutoff else './.'
-                for callers in df['TOTAL_CALLERS']
-        ]
+# def add_x_or_more(df):
+#     for cutoff in range(2, len(sample_parser.get_og_caller_names(df)) + 1):
+#         name = 'COMB_' + str(cutoff) + '_OR_MORE'
+#         df[name] = [
+#                 True if callers >= cutoff else './.'
+#                 for callers in df['TOTAL_CALLERS']
+#         ]
+
+def add_2_or_more(df):
+    name = 'COMB_2_OR_MORE'
+    df[name] = [
+            True if callers >= 2 else './.' for callers in df['TOTAL_CALLERS']
+    ]
 
 # WIP
 def add_differences(df):

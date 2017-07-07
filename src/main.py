@@ -18,8 +18,10 @@ samples_dir = os.path.join(data_path, 'samples')
 df_file = os.path.join(samples_dir, 'combined.tab')
 
 # Generate combined data file
-if not os.path.isfile(df_file):
-    sample_parser.combine(gt_file, bed_file, samples_dir)
+# if not os.path.isfile(df_file):
+#     sample_parser.combine(gt_file, bed_file, samples_dir)
+
+sample_parser.combine(gt_file, bed_file, samples_dir)
 
 df = pandas.read_csv(df_file, sep='\t', low_memory=False)
 # Convert SAMPLE_IDs to Strings
@@ -39,7 +41,7 @@ pandas.set_option('display.width', 300)
 
 # analysis.generate_combined_caller(df)
 
-analysis.add_differences(df)
+# analysis.add_differences(df)
 
 analysis_df = analysis.analyze_callers(df, panel, gt)
 analysis_file = os.path.join(data_path, 'analysis.csv')
