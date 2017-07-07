@@ -103,3 +103,7 @@ ENV/
 # exome data
 data/samples/**
 data/ground_truth/*
+src/combined.csv
+
+# vim
+*.swp
