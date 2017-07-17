@@ -253,7 +253,7 @@ def combine(gt_file, bed_file, samples_dir):
     # Add covered and reportable lists to DataFrame
     df['COVERED'] = covered_list
     df['REPORTABLE'] = reportables_list
-    analysis.add_x_or_more(df)
+    analysis.add_2_or_more(df)
     # analysis.add_differences(df)
     # Create combined tab file
     df.to_csv(
