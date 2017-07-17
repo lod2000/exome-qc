@@ -145,34 +145,31 @@ def f(weight, caller, df):
 # WIP
 def generate_combined_caller_weights(df):
     callers = sample_parser.get_og_caller_names(df)
-    # diff_sum = 1
-    # diff_list = []
-    # weights = [1] * len(callers)
-    # k = 0 #temporary
-    # caller = callers[k]
-    # for i in range(0, df.shape[0]):
-    #     true_status = int(df['REPORTABLE'][i] == True)
-    #     call = int(not df[caller][i] == './.')
-    #     weighted = weights[k] * call
-    # for i in range(0, df.shape[0]):
-    #     true_status = int(df['REPORTABLE'][i] == True)
-    #     weighted_sum = 0
-    #     for k, caller in enumerate(callers):
-    #         call = int(not df[caller][i] == './.')
-    #         weighted_sum += weights[k] * call
-    #     diff = (true_status - weighted_sum) ** 2
-    #     diff_list.append(diff)
-        # diff_sum += diff
-    # print(sum(diff_list)/len(diff_list))15
     weights = []
     for k, caller in enumerate(callers):
         print(caller)
-        weight = fmin(lambda weight: f(weight, caller, df), 0, maxfun=20)
+        weight = fmin(lambda weight: f(weight, caller, df), 0, maxfun=20)[0]
         weights.append(weight)
-        print(weight[0])
+        # Test
         print(weight)
-        print(f(weight[0], caller, df))
-        print(f(1, caller, df)) 
+        print(f(weight, caller, df))
+        print(f(1, caller, df))
+    return weights
+
+def add_combined_caller(df, weights):
+    callers = sample_parser.get_og_caller_names(df)
+    combined_status = []
+    for i in range(0, df.shape[0]):
+        weighted_calls = []
+        for k, caller in enumerate(callers):
+            call = int(not df[caller][i] == './.')
+            weight = weights['WEIGHT'][k]
+            weighted_calls.append(weight * call)
+        combined_status.append(sum(weighted_calls))
+    df['COMBINED_STATUS'] = combined_status
+    df['COMB_TF'] = [
+            True if status >= 0.009 else './.' for status in df['COMBINED_STATUS']
+    ]
 
 # def add_x_or_more(df):
 #     for cutoff in range(2, len(sample_parser.get_og_caller_names(df)) + 1):
