@@ -107,3 +107,6 @@ src/combined.csv
 
 # vim
 *.swp
+
+# R stuff
+data/.Rhistory
