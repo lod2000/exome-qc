@@ -134,12 +134,17 @@ def analyze_callers(df, panel, gt):
 
     return analysis_df
 
-def f(x):
-    return x ** 2
+def f(weight, caller, df):
+    weighted_sum = 0
+    for i in range(0, df.shape[0]):
+        true_status = int(df['REPORTABLE'][i] == True)
+        call = int(not df[caller][i] == './.')
+        weighted_sum += (true_status - weight * call) ** 2
+    return weighted_sum
 
 # WIP
-def generate_combined_caller(df):
-    # callers = sample_parser.get_og_caller_names(df)
+def generate_combined_caller_weights(df):
+    callers = sample_parser.get_og_caller_names(df)
     # diff_sum = 1
     # diff_list = []
     # weights = [1] * len(callers)
@@ -158,8 +163,16 @@ def generate_combined_caller(df):
     #     diff = (true_status - weighted_sum) ** 2
     #     diff_list.append(diff)
         # diff_sum += diff
-    # print(sum(diff_list)/len(diff_list))
-    fmin(f, numpy.array([1,1]))
+    # print(sum(diff_list)/len(diff_list))15
+    weights = []
+    for k, caller in enumerate(callers):
+        print(caller)
+        weight = fmin(lambda weight: f(weight, caller, df), 0, maxfun=20)
+        weights.append(weight)
+        print(weight[0])
+        print(weight)
+        print(f(weight[0], caller, df))
+        print(f(1, caller, df)) 
 
 # def add_x_or_more(df):
 #     for cutoff in range(2, len(sample_parser.get_og_caller_names(df)) + 1):
