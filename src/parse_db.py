@@ -1,5 +1,6 @@
-import pymongo
 from bson import ObjectId
+
+import pymongo
 import pandas
 
 client = pymongo.MongoClient()
