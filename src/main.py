@@ -40,12 +40,13 @@ pandas.set_option('display.width', 300)
 
 # Generate combined callers
 analysis.add_2_or_more(df)
+analysis.generate_combined_caller(df)
 
 # analysis.generate_combined_caller(df)
 
 # analysis.add_differences(df)
 
-analysis_df = analysis.analyze_callers(df, panel, gt)
+# analysis_df = analysis.analyze_callers(df, panel, gt)
 analysis_file = os.path.join(data_path, 'analysis.csv')
 try:
     df.to_csv(
@@ -53,10 +54,10 @@ try:
             encoding='utf-8', index=False
     )
     print('\nOutput to file ' + os.path.join(samples_dir, 'combined.tab'))
-    analysis_df.to_csv(
-            analysis_file, sep='\t', encoding='utf-8', index=False
-    )
-    print('\nOutput to file ' + analysis_file)
+    # analysis_df.to_csv(
+    #         analysis_file, sep='\t', encoding='utf-8', index=False
+    # )
+    # print('\nOutput to file ' + analysis_file)
 except PermissionError:
     print('Another program is using the file analysis.csv or combined.tab.\
            Please close and try again.')

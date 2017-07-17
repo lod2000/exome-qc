@@ -1,6 +1,8 @@
 import math
 
 import pandas
+import numpy
+from scipy.optimize import fmin
 
 import sample_parser
 
@@ -132,21 +134,32 @@ def analyze_callers(df, panel, gt):
 
     return analysis_df
 
+def f(x):
+    return x ** 2
+
 # WIP
 def generate_combined_caller(df):
-    callers = sample_parser.get_og_caller_names(df)
-    diff_sum = 1
-    weights = [1] * len(callers)
-    while diff_sum > 0.1:
-        for i in range(0, df.shape[0]):
-            true_status = int(df['REPORTABLE'][i] == True)
-            weighted_sum = 0
-            for k, caller in enumerate(callers):
-                call = int(not df[caller][i] == './.')
-                weighted_sum += weights[k] * call
-            diff = (true_status - weighted_sum) ** 2
-            diff_sum += diff
-        print(diff_sum)
+    # callers = sample_parser.get_og_caller_names(df)
+    # diff_sum = 1
+    # diff_list = []
+    # weights = [1] * len(callers)
+    # k = 0 #temporary
+    # caller = callers[k]
+    # for i in range(0, df.shape[0]):
+    #     true_status = int(df['REPORTABLE'][i] == True)
+    #     call = int(not df[caller][i] == './.')
+    #     weighted = weights[k] * call
+    # for i in range(0, df.shape[0]):
+    #     true_status = int(df['REPORTABLE'][i] == True)
+    #     weighted_sum = 0
+    #     for k, caller in enumerate(callers):
+    #         call = int(not df[caller][i] == './.')
+    #         weighted_sum += weights[k] * call
+    #     diff = (true_status - weighted_sum) ** 2
+    #     diff_list.append(diff)
+        # diff_sum += diff
+    # print(sum(diff_list)/len(diff_list))
+    fmin(f, numpy.array([1,1]))
 
 # def add_x_or_more(df):
 #     for cutoff in range(2, len(sample_parser.get_og_caller_names(df)) + 1):
