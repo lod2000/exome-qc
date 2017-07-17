@@ -142,6 +142,13 @@ def f(weight, caller, df):
         weighted_sum += (true_status - weight * call) ** 2
     return weighted_sum
 
+    # WIP
+    # for i in range(0, df.shape[0]):
+    #     true_status = int(df['REPORTABLE'][i] == True)
+    #     call = int(not df[caller][i] == './.')
+    #     weighted_sum += math.log(1 + math.exp(call) - true_status * call)
+    # return weighted_sum
+
 # WIP
 def generate_combined_caller_weights(df):
     callers = sample_parser.get_og_caller_names(df)
@@ -163,7 +170,7 @@ def add_combined_caller(df, weights):
         weighted_calls = []
         for k, caller in enumerate(callers):
             call = int(not df[caller][i] == './.')
-            weight = weights['WEIGHT'][k]
+            weight = weights[k]
             weighted_calls.append(weight * call)
         combined_status.append(sum(weighted_calls))
     df['COMBINED_STATUS'] = combined_status

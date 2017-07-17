@@ -43,7 +43,8 @@ pandas.set_option('display.width', 300)
 # Generate combined callers
 callers = sample_parser.get_og_caller_names(df)
 if os.path.isfile(weights_file):
-    weights = pandas.read_csv(weights_file, sep='\t')
+    weights_df = pandas.read_csv(weights_file, sep='\t')
+    weights = weights_df['WEIGHT']
 else:
     weights = analysis.generate_combined_caller_weights(df)
     weights_df = pandas.DataFrame({'CALLER': callers, 'WEIGHT': weights})
