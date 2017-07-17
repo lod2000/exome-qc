@@ -15,14 +15,13 @@ gt_file = glob.glob(os.path.join(data_path, 'ground_truth', '*.xlsx'))[0]
 bed_file = glob.glob(os.path.join(data_path, 'panel', '*.bed'))[0]
 samples_dir = os.path.join(data_path, 'samples')
 # Combined data tab file path
-df_file = os.path.join(samples_dir, 'combined.tab')
+df_file = os.path.join(samples_dir, 'parsed.tab')
 
 # Generate combined data file
-# if not os.path.isfile(df_file):
-#     sample_parser.combine(gt_file, bed_file, samples_dir)
+if not os.path.isfile(df_file):
+    sample_parser.combine(gt_file, bed_file, samples_dir)
 
-sample_parser.combine(gt_file, bed_file, samples_dir)
-
+# Read parsed CSV
 df = pandas.read_csv(df_file, sep='\t', low_memory=False)
 # Convert SAMPLE_IDs to Strings
 df['SAMPLE_ID'] = df['SAMPLE_ID'].astype(str)
@@ -39,6 +38,9 @@ pandas.set_option('display.max_columns', 14)
 pandas.set_option('display.max_rows', 13)
 pandas.set_option('display.width', 300)
 
+# Generate combined callers
+analysis.add_2_or_more(df)
+
 # analysis.generate_combined_caller(df)
 
 # analysis.add_differences(df)
@@ -46,9 +48,15 @@ pandas.set_option('display.width', 300)
 analysis_df = analysis.analyze_callers(df, panel, gt)
 analysis_file = os.path.join(data_path, 'analysis.csv')
 try:
+    df.to_csv(
+            os.path.join(samples_dir, 'parsed.tab'), sep='\t',
+            encoding='utf-8', index=False
+    )
+    print('\nOutput to file ' + os.path.join(samples_dir, 'combined.tab'))
     analysis_df.to_csv(
             analysis_file, sep='\t', encoding='utf-8', index=False
     )
+    print('\nOutput to file ' + analysis_file)
 except PermissionError:
-    print('Another program is using the file analysis.csv.\
+    print('Another program is using the file analysis.csv or combined.tab.\
            Please close and try again.')

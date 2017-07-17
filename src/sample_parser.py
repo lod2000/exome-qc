@@ -6,8 +6,6 @@ import sys
 import pandas
 import numpy
 
-import analysis
-
 # Parse the ground truth file into a DataFrame
 def parse_gt(excel_file):
     # Create data frame from Excel file
@@ -253,14 +251,12 @@ def combine(gt_file, bed_file, samples_dir):
     # Add covered and reportable lists to DataFrame
     df['COVERED'] = covered_list
     df['REPORTABLE'] = reportables_list
-    analysis.add_2_or_more(df)
-    # analysis.add_differences(df)
-    # Create combined tab file
+    # Create parsed tab file
     df.to_csv(
-            os.path.join(samples_dir, 'combined.tab'), sep='\t',
+            os.path.join(samples_dir, 'parsed.tab'), sep='\t',
             encoding='utf-8', index=False
     )
-    print('\nOutput to file ' + os.path.join(samples_dir, 'combined.tab'))
+    print('\nOutput to file ' + os.path.join(samples_dir, 'parsed.tab'))
 
 if __name__ == "__main__":
     import argparse
