@@ -3,6 +3,7 @@ import math
 import pandas
 import numpy
 from scipy.optimize import fmin
+from scipy.optimize import minimize
 
 import sample_parser
 
@@ -140,14 +141,30 @@ def f(weight, caller, df):
         true_status = int(df['REPORTABLE'][i] == True)
         call = int(not df[caller][i] == './.')
         weighted_sum += (true_status - weight * call) ** 2
+        # weighted_sum += math.log(1 + math.exp(weight * call)) - true_status * weight * call
+    # l = [
+    #         math.log(1 + math.exp(weight * int(not df[caller][i] == './.')))
+    #         - int(df['REPORTABLE'][i] == True) * weight * int(not df[caller][i] == './.')
+    #         for i in range(0, df.shape[0])
+    # ]
+    print('test')
     return weighted_sum
 
-    # WIP
-    # for i in range(0, df.shape[0]):
-    #     true_status = int(df['REPORTABLE'][i] == True)
-    #     call = int(not df[caller][i] == './.')
-    #     weighted_sum += math.log(1 + math.exp(call) - true_status * call)
-    # return weighted_sum
+def f2(weights, callers, df):
+    weighted_sum = 0
+    for i in range(0, df.shape[0]):
+        true_status = int(df['REPORTABLE'][i] == True)
+        weighted_calls = 0
+        for k, caller in enumerate(callers):
+            call = int(not df[caller][i] == './.')
+            weight = weights[k]
+            weighted_calls += weight * call
+        weighted_sum += math.log(1 + math.exp(weighted_calls)) - true_status * weighted_calls
+    print('test')
+    return weighted_sum
+
+def f3(x):
+    return sum(100.0*(x[1:]-x[:-1]**2.0)**2.0 + (1-x[:-1])**2.0)
 
 # WIP
 def generate_combined_caller_weights(df):
@@ -159,8 +176,15 @@ def generate_combined_caller_weights(df):
         weights.append(weight)
         # Test
         print(weight)
+        print(f(weight - 0.0005, caller, df))
         print(f(weight, caller, df))
-        print(f(1, caller, df))
+        print(f(weight + 0.0005, caller, df))
+    # weights0 = numpy.array([0] * len(callers))
+    # print('Calculating weights...')
+    # weights = minimize(f2, weights0, args=(callers, df), method='nelder-mead', options={'xtol': 1e-8, 'disp': True})
+    # weights = minimize(lambda weights: f2(weights, callers, df), weights0, method='BFGS', options={'disp': True})
+    # x0 = numpy.array([0, 0, 0, 0, 0])
+    # weights = minimize(f3, x0, method='nelder-mead', options={'xtol': 1e-8, 'disp': True})
     return weights
 
 def add_combined_caller(df, weights):

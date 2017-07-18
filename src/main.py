@@ -47,17 +47,17 @@ if os.path.isfile(weights_file):
     weights = weights_df['WEIGHT']
 else:
     weights = analysis.generate_combined_caller_weights(df)
-    weights_df = pandas.DataFrame({'CALLER': callers, 'WEIGHT': weights})
-    weights_df.to_csv(weights_file, sep='\t', encoding='utf-8', index=False)
+    # weights_df = pandas.DataFrame({'CALLER': callers, 'WEIGHT': list(weights)})
+    # weights_df.to_csv(weights_file, sep='\t', encoding='utf-8', index=False)
 
 print(weights)
-analysis.add_combined_caller(df, weights)
-analysis.add_2_or_more(df)
+# analysis.add_combined_caller(df, weights)
+# analysis.add_2_or_more(df)
 
 # analysis.add_differences(df)
 
-analysis_df = analysis.analyze_callers(df, panel, gt)
-analysis_file = os.path.join(data_path, 'analysis.csv')
+# analysis_df = analysis.analyze_callers(df, panel, gt)
+# analysis_file = os.path.join(data_path, 'analysis.csv')
 try:
     df.to_csv(
             os.path.join(samples_dir, 'combined.tab'), sep='\t',
