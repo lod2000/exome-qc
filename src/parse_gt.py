@@ -64,24 +64,43 @@ def get_simplified_gt(db_name, gt_dir):
     print('Generating simplified data frame...')
     # Simplify DataFrame
     simple_df = pandas.DataFrame()
+    print('a')
     # Method 1
     chromosomes = []
     positions = []
     genes = []
+    dna_changes = []
+    protein_changes = []
     headers = list(df)
     gene_columns = [h for h in headers if re.search('gene', h)]
     for i in range(0, df.shape[0]):
-        chromosomes[i] = df['_locus'][i].split(':')[0]
-        positions[i] = df['_locus'][i].split(':')[1]
-        genes[i] = ''
-        for column in gene_columns:
-            if re.search('^[A-Z]', str(df[column][index])):
-                genes[i] = df[column][index]
-
+        chromosomes.append(df['_locus'][i].split(':')[0])
+        positions.append(df['_locus'][i].split(':')[1])
+        if re.search('^[A-Z0-9]*\sc.[^\s]*:', str(df['reported_variant'][i])):
+            genes.append(df['reported_variant'][i].split()[0])
+            dna_changes.append(df['reported_variant'][i].split()[1].split(':')[0])
+            try:
+                protein_changes.append(df['reported_variant'][i].split()[1].split(':')[1])
+            except AttributeError:
+                protein_changes.append('')
+        else:
+            genes.append('')
+            for column in gene_columns:
+                if re.search('^[A-Z]', str(df[column][i])):
+                    genes[i] = df[column][i]
+            dna_changes.append('')
+            protein_changes.append('')
+    simple_df['CHROMOSOME'] = chromosomes
+    simple_df['POSITION'] = positions
+    simple_df['GENE'] = genes
+    simple_df['DNA_CHANGE'] = dna_changes
+    simple_df['PROTEIN_CHANGE'] = protein_changes
+    print('b')
     # Method 2
     simple_df['CHROMOSOME'] = [locus.split(':')[0] for locus in df['_locus']]
     simple_df['POSITION'] = [locus.split(':')[1] for locus in df['_locus']]
     simple_df['GENE'] = [get_gene_id(df, i) for i in range(0, df.shape[0])]
+    print('c')
     simple_df.to_csv(
             os.path.join(gt_dir, 'simple_ground_truth.csv'),
             sep='\t', encoding='utf8', index=False
