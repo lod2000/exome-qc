@@ -1,5 +1,4 @@
 import os
-import math
 import sys
 import glob
 
@@ -16,12 +15,15 @@ gt_file = glob.glob(os.path.join(data_path, 'ground_truth', '*.xlsx'))[0]
 bed_file = glob.glob(os.path.join(data_path, 'panel', '*.bed'))[0]
 samples_dir = os.path.join(data_path, 'samples')
 # Combined data tab file path
-df_file = os.path.join(samples_dir, 'combined.tab')
+df_file = os.path.join(samples_dir, 'parsed.tab')
+# Combined caller weights file path
+weights_file = os.path.join(data_path, 'weights.tab')
 
 # Generate combined data file
 if not os.path.isfile(df_file):
     parse_samples.combine(gt_file, bed_file, samples_dir)
 
+# Read parsed CSV
 df = pandas.read_csv(df_file, sep='\t', low_memory=False)
 # Convert SAMPLE_IDs to Strings
 df['SAMPLE_ID'] = df['SAMPLE_ID'].astype(str)
@@ -38,56 +40,18 @@ pandas.set_option('display.max_columns', 14)
 pandas.set_option('display.max_rows', 13)
 pandas.set_option('display.width', 300)
 
-# Initialize analysis DataFrame
-analysis_df = pandas.DataFrame({
-        'ANALYSIS' : ['True Positives', 'True Negatives',
-        'False Positives', 'False Negatives', 'True Positive Rate',
-        'True Negative Rate', 'Positive Predictive Value',
-        'Negative Predictive Value', 'False Negative Rate',
-        'False Positive Rate', 'False Discovery Rate', 'False Omission Rate',
-        'Accuracy', 'Matthews Correlation Coefficient']
-})
-
-for caller in parse_samples.get_caller_names(df):
-    print('\n')
-    print(caller)
-
-    # True positives DataFrame
-    tp_df = analysis.get_true_positives(df, caller)
-    # False positives DataFrame
-    fp_df = analysis.get_false_positives(df, caller)
-    # True negatives in DataFrame
-    tn_df = analysis.get_true_negatives(fp_df, caller, panel)
-    # False negatives DataFrame
-    fn_df = analysis.get_false_negatives(tp_df, gt)
-
-    # Count rows in DataFrames
-    tp = tp_df.shape[0]
-    tn = tn_df.shape[0]
-    fp = fp_df.shape[0]
-    fn = fn_df.shape[0]
-
-    # Analysis
-    tpr = tp / (tp + fn) # True positive rate (sensitivity)
-    tnr = tn / (tn + fp) # True negative rate (specificity)
-    ppv = tp / (tp + fp) # Positive predictive value (precision)
-    npv = tn / (tn + fn) # Negative predictive value
-    fnr = fn / (fn + tp) # False negative rate (miss rate)
-    fpr = fp / (fp + tn) # False positive rate (fall-out)
-    fdr = fp / (fp + tp) # False discovery rate
-    fom = fn / (fn + tn) # False omission rate
-    acc = (tp + tn) / (tp + tn + fp + fn) # Accuracy
-    # Matthews correlation coefficient
-    mcc = ((tp * tn - fp * fn)
-            / math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)))
-
-    analysis_df[caller] = [
-            tp, tn, fp, fn, tpr, tnr, ppv, npv, fnr, fpr, fdr, fom, acc, mcc
-    ]
-
+analysis_df = analysis.analyze_callers(df, panel, gt)
 analysis_file = os.path.join(data_path, 'analysis.csv')
 try:
-    analysis_df.to_csv(analysis_file, sep='\t', encoding='utf-8', index=False)
+    df.to_csv(
+            os.path.join(samples_dir, 'combined.tab'), sep='\t',
+            encoding='utf-8', index=False
+    )
+    print('\nOutput to data/samples/combined.tab')
+    analysis_df.to_csv(
+            analysis_file, sep='\t', encoding='utf-8', index=False
+    )
+    print('\nOutput to file ' + analysis_file)
 except PermissionError:
-    print('Another program is using the file analysis.csv.\
+    print('Another program is using the file analysis.csv or combined.tab.\
            Please close and try again.')

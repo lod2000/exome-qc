@@ -1,4 +1,10 @@
-import pandas, re, os, numpy, time, sys
+import re
+import os
+import time
+import sys
+
+import pandas
+import numpy
 
 # Parse the ground truth file into a DataFrame
 def parse_gt(excel_file):
@@ -127,9 +133,13 @@ def split_gt(gt_parsed, match_list):
     return gt_df_list
 
 # Returns the names of the variant callers
-def get_caller_names(sample):
+def get_og_caller_names(sample):
     headers = list(sample)
     return [h for h in headers if re.search('^GT_', h)]
+
+def get_caller_names(sample):
+    headers = list(sample)
+    return [h for h in headers if re.search('^GT_', h) or re.search('^COMB_', h)]
 
 # Returns a list of DataFrames of samples for which matches exist in the ground
 # truth
@@ -241,12 +251,12 @@ def combine(gt_file, bed_file, samples_dir):
     # Add covered and reportable lists to DataFrame
     df['COVERED'] = covered_list
     df['REPORTABLE'] = reportables_list
-    # Create combined tab file
+    # Create parsed tab file
     df.to_csv(
-            os.path.join(samples_dir, 'combined.tab'), sep='\t',
+            os.path.join(samples_dir, 'parsed.tab'), sep='\t',
             encoding='utf-8', index=False
     )
-    print('\nOutput to file ' + os.path.join(samples_dir, 'combined.tab'))
+    print('\nOutput to file ' + os.path.join(samples_dir, 'parsed.tab'))
 
 if __name__ == "__main__":
     import argparse
