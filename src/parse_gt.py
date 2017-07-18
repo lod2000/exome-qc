@@ -61,8 +61,24 @@ def get_gene_id(df, index):
 
 def get_simplified_gt(db_name, gt_dir):
     df = get_reportables(db_name, gt_dir)
+    print('Generating simplified data frame...')
     # Simplify DataFrame
     simple_df = pandas.DataFrame()
+    # Method 1
+    chromosomes = []
+    positions = []
+    genes = []
+    headers = list(df)
+    gene_columns = [h for h in headers if re.search('gene', h)]
+    for i in range(0, df.shape[0]):
+        chromosomes[i] = df['_locus'][i].split(':')[0]
+        positions[i] = df['_locus'][i].split(':')[1]
+        genes[i] = ''
+        for column in gene_columns:
+            if re.search('^[A-Z]', str(df[column][index])):
+                genes[i] = df[column][index]
+
+    # Method 2
     simple_df['CHROMOSOME'] = [locus.split(':')[0] for locus in df['_locus']]
     simple_df['POSITION'] = [locus.split(':')[1] for locus in df['_locus']]
     simple_df['GENE'] = [get_gene_id(df, i) for i in range(0, df.shape[0])]
