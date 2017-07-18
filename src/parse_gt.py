@@ -30,7 +30,7 @@ def get_reportables(db_name, gt_dir):
             replace_key(torrent_doc, 'torrent_updated_at', 'updated_at')
             replace_key(torrent_doc, 'torrent_result_id', '_id')
             replace_key(final_doc, 'final_result_id', '_id')
-            locus = (torrent_doc['_locus'])
+            # locus = (torrent_doc['_locus'])
             # Remove unnecessary fields
             if 'snapshot' in torrent_doc:
                 del torrent_doc['snapshot']
@@ -50,15 +50,29 @@ def get_reportables(db_name, gt_dir):
     )
     return df
 
+def get_gene_id(df, index):
+    headers = list(df)
+    columns = [h for h in headers if re.search('gene', h)]
+    for column in columns:
+        if not df[column][index] == '':
+            return df[column][index]
+            break
+    return ''
+
 def get_simplified_gt(db_name, gt_dir):
     df = get_reportables(db_name, gt_dir)
     # Simplify DataFrame
-    df['CHROMOSOME'] = [locus.split(':')[0] for locus in df['_locus']]
-    df['POSITION'] = [locus.split(':')[1] for locus in df['_locus']]
-    df.drop('_locus', axis=1, inplace=True)
+    simple_df['CHROMOSOME'] = [locus.split(':')[0] for locus in df['_locus']]
+    simple_df['POSITION'] = [locus.split(':')[1] for locus in df['_locus']]
+    simple_df['GENE'] = [get_gene_id(df, i) for i in range(0, df.shape[0])]
+    simple_df.to_csv(
+            os.path.join(gt_dir, 'simple_ground_truth.csv'),
+            sep='\t', encoding='utf8', index=False
+    )
 
 if __name__ == "__main__":
-    get_reportables(
+    get_simplified_gt(
             '2017-06-30_NgsReviewer_master',
             os.path.join(sys.path[0], '..', 'data', 'ground_truth')
     )
+    print(get_simplified_gt())
