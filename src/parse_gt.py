@@ -1,6 +1,7 @@
 from bson import ObjectId
 import os
 import sys
+import re
 
 import pymongo
 import pandas
@@ -21,7 +22,7 @@ def get_reportables(db_name, gt_dir):
 
     reportable_cursor = final.find({'reportable': True, 'germline': False, 'ion_junk': False})
     combined = []
-
+    print('Combining final and torrent documents...')
     for final_doc in reportable_cursor:
         torrent_doc = torrent.find_one(final_doc['torrent_result_id'])
         # Generate combined dict of torrent and final information
@@ -54,14 +55,14 @@ def get_gene_id(df, index):
     headers = list(df)
     columns = [h for h in headers if re.search('gene', h)]
     for column in columns:
-        if not df[column][index] == '':
+        if re.search('^[A-Z]', str(df[column][index])):
             return df[column][index]
-            break
     return ''
 
 def get_simplified_gt(db_name, gt_dir):
     df = get_reportables(db_name, gt_dir)
     # Simplify DataFrame
+    simple_df = pandas.DataFrame()
     simple_df['CHROMOSOME'] = [locus.split(':')[0] for locus in df['_locus']]
     simple_df['POSITION'] = [locus.split(':')[1] for locus in df['_locus']]
     simple_df['GENE'] = [get_gene_id(df, i) for i in range(0, df.shape[0])]
@@ -75,4 +76,3 @@ if __name__ == "__main__":
             '2017-06-30_NgsReviewer_master',
             os.path.join(sys.path[0], '..', 'data', 'ground_truth')
     )
-    print(get_simplified_gt())
