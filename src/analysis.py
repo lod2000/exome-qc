@@ -1,6 +1,6 @@
 import pandas
 
-import sample_parser
+import parse_samples
 
 # Reportable
 def get_true_positives(df, caller_name):
@@ -40,7 +40,7 @@ def get_unclassified(df, caller_name):
 # by the small panel
 # TODO speed up
 def get_true_negatives(fp, caller_name, panel):
-    positions = sample_parser.split_panel(panel)
+    positions = parse_samples.split_panel(panel)
     all_covered = fp.iloc[[
             i for i, covered in enumerate(fp['COVERED'])
             if covered and not fp[caller_name][i] == './.'

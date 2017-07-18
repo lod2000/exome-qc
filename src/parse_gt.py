@@ -3,9 +3,12 @@ from bson import ObjectId
 import pymongo
 import pandas
 
+# Get mongo database
+# Requires mongorestore to have been run
 client = pymongo.MongoClient()
 db = client['2017-06-30_NgsReviewer_master']
 
+# Mongo collections
 final = db.mongo_final.final_results
 torrent = db.mongo_torrent.torrent_results
 
@@ -28,10 +31,6 @@ for final_doc in reportable_cursor:
         locus = (torrent_doc['_locus'])
         if 'snapshot' in torrent_doc:
             del torrent_doc['snapshot']
-#        try:
-#            del torrent_doc['snapshot']
-#        except KeyError:
-#            print('No snapshot for ' + torrent_doc['torrent_result_id'])
 
         combined.append({**torrent_doc,  **final_doc})
     except TypeError:
@@ -40,4 +39,4 @@ for final_doc in reportable_cursor:
 df = pandas.DataFrame(combined)
 df['CHROMOSOME'] = [locus.split(':')[0] for locus in df['_locus']]
 df['POSITION'] = [locus.split(':')[1] for locus in df['_locus']]
-df.to_csv('combined.csv', sep='\t', encoding='utf8', index=False)
+df.to_csv('ground_truth.csv', sep='\t', encoding='utf8', index=False)

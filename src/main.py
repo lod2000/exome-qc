@@ -5,7 +5,7 @@ import glob
 
 import pandas
 
-import sample_parser
+import parse_samples
 import analysis
 
 # Get path to this file
@@ -20,18 +20,18 @@ df_file = os.path.join(samples_dir, 'combined.tab')
 
 # Generate combined data file
 if not os.path.isfile(df_file):
-    sample_parser.combine(gt_file, bed_file, samples_dir)
+    parse_samples.combine(gt_file, bed_file, samples_dir)
 
 df = pandas.read_csv(df_file, sep='\t', low_memory=False)
 # Convert SAMPLE_IDs to Strings
 df['SAMPLE_ID'] = df['SAMPLE_ID'].astype(str)
-gt_parsed = sample_parser.parse_gt(gt_file)
-match_list = sample_parser.find_matches(
+gt_parsed = parse_samples.parse_gt(gt_file)
+match_list = parse_samples.find_matches(
         next(os.walk(samples_dir))[1], gt_parsed)
 gt = pandas.concat(
-        sample_parser.split_gt(gt_parsed, match_list)
+        parse_samples.split_gt(gt_parsed, match_list)
 ).reset_index(drop=True)
-panel = sample_parser.parse_bed(bed_file)
+panel = parse_samples.parse_bed(bed_file)
 
 # DataFrame terminal display options
 pandas.set_option('display.max_columns', 14)
@@ -48,7 +48,7 @@ analysis_df = pandas.DataFrame({
         'Accuracy', 'Matthews Correlation Coefficient']
 })
 
-for caller in sample_parser.get_caller_names(df):
+for caller in parse_samples.get_caller_names(df):
     print('\n')
     print(caller)
 
