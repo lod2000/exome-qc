@@ -12,6 +12,7 @@ src_path = sys.path[0]
 # Set path to data directory
 data_path = os.path.join(src_path, '..', 'data')
 gt_file = glob.glob(os.path.join(data_path, 'ground_truth', '*.xlsx'))[0]
+gt_dir = os.path.join(data_path, 'ground_truth')
 bed_file = glob.glob(os.path.join(data_path, 'panel', '*.bed'))[0]
 samples_dir = os.path.join(data_path, 'samples')
 # Combined data tab file path
