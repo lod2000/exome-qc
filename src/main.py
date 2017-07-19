@@ -34,7 +34,7 @@ gt = pandas.concat(
 panel = sample_parser.parse_bed(bed_file)
 
 # DataFrame terminal display options
-pandas.set_option('display.max_columns', 14)
+pandas.set_option('display.max_columns', 7)
 pandas.set_option('display.max_rows', 13)
 pandas.set_option('display.width', 300)
 
@@ -84,6 +84,15 @@ for caller in sample_parser.get_caller_names(df):
     analysis_df[caller] = [
             tp, tn, fp, fn, tpr, tnr, ppv, npv, fnr, fpr, fdr, fom, acc, mcc
     ]
+
+at = analysis_df.transpose().reset_index()
+at.rename(columns = at.iloc[0], inplace=True)
+at = at[1:].reset_index(drop=True)
+# analysis_transposed.rename(columns=analysis_transposed.iloc[0])
+# analysis_transposed.columns = analysis_transposed.iloc[0]
+# analysis_transposed.reindex(analysis_transposed.index.drop(0))
+print(at)
+analysis.plot_callers(at)
 
 analysis_file = os.path.join(data_path, 'analysis.csv')
 try:

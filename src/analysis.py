@@ -1,4 +1,5 @@
 import pandas
+import matplotlib.pyplot as pyplot
 
 import sample_parser
 
@@ -72,4 +73,7 @@ def get_true_negatives(fp, caller_name, panel):
                 ignore_index=True
         )
     return all_positions
-    # return positions.iloc[[i for i, pos in enumerate(positions['POSITION']) if not (pos in covered['POSITION'].tolist() and positions['CHROMOSOME'][i] in covered['CHROMOSOME'] and positions['GENE'][i] in covered['GENE'])]].reset_index(drop=True)
+
+def plot_callers(analysis_df):
+    pyplot.plot(list(analysis_df['False Positives']), list(analysis_df['True Positives']), 'ro')
+    pyplot.show()
