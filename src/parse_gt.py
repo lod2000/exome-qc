@@ -31,7 +31,6 @@ def get_reportables(db_name, gt_dir):
             replace_key(torrent_doc, 'torrent_updated_at', 'updated_at')
             replace_key(torrent_doc, 'torrent_result_id', '_id')
             replace_key(final_doc, 'final_result_id', '_id')
-            # locus = (torrent_doc['_locus'])
             # Remove unnecessary fields
             if 'snapshot' in torrent_doc:
                 del torrent_doc['snapshot']
@@ -55,7 +54,7 @@ def get_simplified_gt(db_name, gt_dir):
     df = get_reportables(db_name, gt_dir)
     print('Generating simplified data frame...')
     reported = []
-    sample_ids = []
+    sample_names = []
     chromosomes = []
     positions = []
     genes = []
@@ -63,7 +62,7 @@ def get_simplified_gt(db_name, gt_dir):
     protein_changes = []
     headers = list(df)
     for i in range(0, df.shape[0]):
-        sample_ids.append('')
+        sample_names.append(df['sample_name'][i])
         chromosomes.append(df['_locus'][i].split(':')[0])
         positions.append(df['_locus'][i].split(':')[1])
         # Try to get it all from one place
@@ -81,6 +80,7 @@ def get_simplified_gt(db_name, gt_dir):
             # Gene
             genes.append('')
             gene_columns = [h for h in headers if re.search('gene', h)]
+            gene_columns += ['biomarker_name', 'protein_id']
             for column in gene_columns:
                 if re.search('^[A-Z]', str(df[column][i])):
                     genes[i] = df[column][i]
@@ -94,13 +94,19 @@ def get_simplified_gt(db_name, gt_dir):
                 dna_search = re.search('c.[^\s]*$', str(df[column][i]))
                 if dna_search:
                     dna_changes[i] = dna_search.group(0)
-            # if re.search('^[^\s]*:c.[0-9]', str(df['hgvs_coding_change'][i])):
-            #     dna_changes.append(df['hgvs_coding_change'][i].split(':')[1])
-            # else:
-            #     dna_changes.append('')
+            # Protein
             protein_changes.append('')
+            protein_columns = [
+                    'annotated_protein_change', 'annovar_annotated_protein_change',
+                    'hgvs_protein_change', 'protein', 'snp_eff_protein',
+                    'snpeff_annotated_protein_change'
+            ]
+            for column in protein_columns:
+                protein_search = re.search('p.[^\s]*$', str(df[column][i]))
+                if protein_search:
+                    protein_changes[i] = protein_search.group(0)
     simple_df = pandas.DataFrame({
-            'SAMPLE_ID': sample_ids, 'CHROMOSOME': chromosomes,
+            'SAMPLE_NAME': sample_names, 'CHROMOSOME': chromosomes,
             'POSITION': positions, 'GENE': genes, 'DNA_CHANGE': dna_changes,
             'PROTEIN_CHANGE': protein_changes, 'REPORTED': reported
     })
