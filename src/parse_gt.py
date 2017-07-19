@@ -54,6 +54,8 @@ def get_reportables(db_name, gt_dir):
 def get_simplified_gt(db_name, gt_dir):
     df = get_reportables(db_name, gt_dir)
     print('Generating simplified data frame...')
+    reported = []
+    sample_ids = []
     chromosomes = []
     positions = []
     genes = []
@@ -61,11 +63,13 @@ def get_simplified_gt(db_name, gt_dir):
     protein_changes = []
     headers = list(df)
     for i in range(0, df.shape[0]):
+        sample_ids.append('')
         chromosomes.append(df['_locus'][i].split(':')[0])
         positions.append(df['_locus'][i].split(':')[1])
         # Try to get it all from one place
-        variant = str(df['reported_variant'][i]
-        if re.search('^[A-Z0-9]*\sc.[^\s]*:', variant)):
+        variant = str(df['reported_variant'][i])
+        if re.search('^[A-Z0-9]*\sc.[^\s]*:', variant):
+            reported.append(True)
             genes.append(variant.split()[0])
             dna_changes.append(variant.split()[1].split(':')[0])
             try:
@@ -73,6 +77,7 @@ def get_simplified_gt(db_name, gt_dir):
             except AttributeError:
                 protein_changes.append('')
         else:
+            reported.append(False)
             # Gene
             genes.append('')
             gene_columns = [h for h in headers if re.search('gene', h)]
@@ -82,11 +87,11 @@ def get_simplified_gt(db_name, gt_dir):
             # DNA
             dna_changes.append('')
             dna_columns = [
-                    'ghvs_coding_change', 'snp_eff_coding',
+                    'hgvs_coding_change', 'snp_eff_coding',
                     'snpeff_annotated_dna_change'
             ]
             for column in dna_columns:
-                dna_search = re.search('c.[^\s]*$', df[column][i])
+                dna_search = re.search('c.[^\s]*$', str(df[column][i]))
                 if dna_search:
                     dna_changes[i] = dna_search.group(0)
             # if re.search('^[^\s]*:c.[0-9]', str(df['hgvs_coding_change'][i])):
@@ -97,7 +102,7 @@ def get_simplified_gt(db_name, gt_dir):
     simple_df = pandas.DataFrame({
             'SAMPLE_ID': sample_ids, 'CHROMOSOME': chromosomes,
             'POSITION': positions, 'GENE': genes, 'DNA_CHANGE': dna_changes,
-            'PROTEIN_CHANGE': protein_changes
+            'PROTEIN_CHANGE': protein_changes, 'REPORTED': reported
     })
     simple_df.to_csv(
             os.path.join(gt_dir, 'simple_ground_truth.csv'),
