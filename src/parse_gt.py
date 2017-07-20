@@ -20,7 +20,12 @@ def get_reportables(db_name, gt_dir):
     final = db.mongo_final.final_results
     torrent = db.mongo_torrent.torrent_results
 
-    reportable_cursor = final.find({'reportable': True, 'germline': False, 'ion_junk': False})
+    reportable_cursor = final.find({
+            'reportable': True, 
+            'germline': False, 
+            'ion_junk': False,
+            '_locus': {'$ne': ':'}
+    })
     combined = []
     print('Combining final and torrent documents...')
     for final_doc in reportable_cursor:
