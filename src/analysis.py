@@ -92,7 +92,7 @@ def analyze_callers(df, panel, gt):
             'Accuracy', 'Matthews Correlation Coefficient']
     })
 
-    for caller in sample_parser.get_caller_names(df):
+    for caller in parse_samples.get_caller_names(df):
         print('\n')
         print(caller)
 
@@ -145,7 +145,7 @@ def f(weight, caller, df):
 
 # WIP
 def generate_combined_caller_weights(df):
-    callers = sample_parser.get_og_caller_names(df)
+    callers = parse_samples.get_og_caller_names(df)
     weights = []
     for k, caller in enumerate(callers):
         print(caller)
@@ -158,7 +158,7 @@ def generate_combined_caller_weights(df):
     return weights
 
 def add_combined_caller(df, weights):
-    callers = sample_parser.get_og_caller_names(df)
+    callers = parse_samples.get_og_caller_names(df)
     combined_status = []
     for i in range(0, df.shape[0]):
         weighted_calls = []
@@ -173,7 +173,7 @@ def add_combined_caller(df, weights):
     ]
 
 # def add_x_or_more(df):
-#     for cutoff in range(2, len(sample_parser.get_og_caller_names(df)) + 1):
+#     for cutoff in range(2, len(parse_samples.get_og_caller_names(df)) + 1):
 #         name = 'COMB_' + str(cutoff) + '_OR_MORE'
 #         df[name] = [
 #                 True if callers >= cutoff else './.'
@@ -188,7 +188,7 @@ def add_2_or_more(df):
 
 # WIP
 def add_differences(df):
-    callers = sample_parser.get_og_caller_names(df)
+    callers = parse_samples.get_og_caller_names(df)
     all_except = list(callers)
     for caller1 in callers:
         all_except.remove(caller1)

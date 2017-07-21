@@ -42,7 +42,7 @@ pandas.set_option('display.max_rows', 13)
 pandas.set_option('display.width', 300)
 
 analysis_df = analysis.analyze_callers(df, panel, gt)
-analysis.plot_callers(analysis_df)
+# analysis.plot_callers(analysis_df)
 analysis_file = os.path.join(data_path, 'analysis.csv')
 try:
     df.to_csv(
