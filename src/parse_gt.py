@@ -58,6 +58,9 @@ def get_reportables(db_name, gt_dir):
 def get_simplified_gt(db_name, gt_dir):
     df = get_reportables(db_name, gt_dir)
     print('Generating simplified data frame...')
+    # Remove MiSeq entries
+    df = df.iloc[[i for i, miseq in enumerate(df['miseq_run']) if not miseq]]    
+    df.reset_index(drop=True, inplace=True)
     sample_names = []
     chromosomes = []
     positions = []
@@ -87,8 +90,6 @@ def get_simplified_gt(db_name, gt_dir):
                 if re.search('^[A-Z]', str(df[column][i])):
                     genes[i] = df[column][i]
                     break
-            if genes[i] == '' and re.search('^[A-Z]', str(df['miseq_infogi'][i])):
-                genes[i] = df['miseq_infogi'][i].split(',')[0]
             # DNA
             dna_changes.append('')
             dna_columns = [
@@ -117,6 +118,11 @@ def get_simplified_gt(db_name, gt_dir):
             'POSITION': positions, 'GENE': genes, 'DNA_CHANGE': dna_changes,
             'PROTEIN_CHANGE': protein_changes
     })
+    # Only include variants with DNA and protein info in the new format
+    simple_df = simple_df.iloc[[
+            i for i, dna in enumerate(simple_df['DNA_CHANGE']) 
+            if not dna == '' and not simple_df['PROTEIN_CHANGE'][i] == ''
+    ]]
     simple_df.to_csv(
             os.path.join(gt_dir, 'simple_ground_truth.csv'),
             sep='\t', encoding='utf8', index=False
