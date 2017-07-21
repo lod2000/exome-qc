@@ -37,11 +37,12 @@ gt = pandas.concat(
 panel = parse_samples.parse_bed(bed_file)
 
 # DataFrame terminal display options
-pandas.set_option('display.max_columns', 14)
+pandas.set_option('display.max_columns', 7)
 pandas.set_option('display.max_rows', 13)
 pandas.set_option('display.width', 300)
 
 analysis_df = analysis.analyze_callers(df, panel, gt)
+analysis.plot_callers(analysis_df)
 analysis_file = os.path.join(data_path, 'analysis.csv')
 try:
     df.to_csv(
