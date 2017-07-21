@@ -75,5 +75,32 @@ def get_true_negatives(fp, caller_name, panel):
     return all_positions
 
 def plot_callers(analysis_df):
-    pyplot.plot(list(analysis_df['False Positives']), list(analysis_df['True Positives']), 'ro')
+    callers = [c.split('_')[-1] for c in list(analysis_df.columns)[1:]]
+    at = analysis_df.transpose().reset_index()
+    at.rename(columns = at.iloc[0], inplace=True)
+    at = at[1:].reset_index(drop=True)
+
+    # Create scatter plot
+    pyplot.scatter(
+            at['False Positives'], 
+            at['True Positives'], 
+            marker='o', 
+    )
+    # Plot labels
+    pyplot.ylim(ymin=0)
+    pyplot.xlim(xmin=0)
+    pyplot.title('Mutation caller positive hits')
+    pyplot.ylabel('True positives')
+    pyplot.xlabel('False positives')
+    # Point labels
+    for caller, x, y in zip(
+            callers, at['False Positives'], at['True Positives']
+    ):
+        pyplot.annotate(
+                caller, xy=(x, y), 
+                xytext=(-10, -10), 
+                textcoords='offset points', 
+                ha='right', 
+                va='bottom'
+        )
     pyplot.show()

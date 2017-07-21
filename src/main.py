@@ -85,14 +85,15 @@ for caller in sample_parser.get_caller_names(df):
             tp, tn, fp, fn, tpr, tnr, ppv, npv, fnr, fpr, fdr, fom, acc, mcc
     ]
 
-at = analysis_df.transpose().reset_index()
-at.rename(columns = at.iloc[0], inplace=True)
-at = at[1:].reset_index(drop=True)
+# at = analysis_df.transpose().reset_index()
+# at.rename(columns = at.iloc[0], inplace=True)
+# at = at[1:].reset_index(drop=True)
 # analysis_transposed.rename(columns=analysis_transposed.iloc[0])
 # analysis_transposed.columns = analysis_transposed.iloc[0]
 # analysis_transposed.reindex(analysis_transposed.index.drop(0))
-print(at)
-analysis.plot_callers(at)
+# print(at)
+# analysis.plot_callers(at)
+analysis.plot_callers(analysis_df)
 
 analysis_file = os.path.join(data_path, 'analysis.csv')
 try:
