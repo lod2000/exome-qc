@@ -12,7 +12,7 @@ src_path = sys.path[0]
 # Set path to data directory
 data_path = os.path.join(src_path, '..', 'data')
 gt_dir = os.path.join(data_path, 'ground_truth')
-gt_file = os.path.join(gt_dir, 'simple_ground_truth.csv')
+gt_file = os.path.join(gt_dir, 'ground_truth_small.csv')
 bed_file = glob.glob(os.path.join(data_path, 'panel', '*.bed'))[0]
 samples_dir = os.path.join(data_path, 'samples')
 # Combined data tab file path

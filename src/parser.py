@@ -1,4 +1,3 @@
-from bson import ObjectId
 import re
 import os
 import time
@@ -7,6 +6,8 @@ import sys
 import pandas
 import pymongo
 import numpy
+# from bson import ObjectId
+import bson.ObjectId
 
 def replace_key(dictionary, new_key, old_key):
     dictionary[new_key] = dictionary[old_key]
@@ -31,6 +32,7 @@ def get_reportables(db_name, gt_dir):
             '_locus': {'$ne': ':'}
     })
     combined = []
+    print('Combining final and torrent databases...')
 #    # Set up progress indicator
 #    sys.stdout.write('Parsing mongo database:  0%')
 #    sys.stdout.flush()
@@ -159,11 +161,11 @@ def get_simplified_gt(db_name, gt_dir):
             i for i, dna in enumerate(simple_df['DNA_CHANGE']) 
             if not dna == '' and not simple_df['PROTEIN_CHANGE'][i] == ''
     ]]
-#    # Output CSV
-#    simple_df.to_csv(
-#            os.path.join(gt_dir, 'simple_ground_truth.csv'),
-#            sep='\t', encoding='utf8', index=False
-#    )
+    # Output CSV
+    simple_df.to_csv(
+            os.path.join(gt_dir, 'ground_truth.csv'),
+            sep='\t', encoding='utf8', index=False
+    )
     return simple_df
 
 def parse_bed(bed):
@@ -247,11 +249,11 @@ def combine_samples(samples_dir, sample_paths):
 
 def combine(db_name, bed_file, samples_dir):
     gt_dir = os.path.join(sys.path[0], '..', 'data', 'ground_truth')
-    # Parse ground truth DataFrame from mongo database
-    gt = get_simplified_gt(
-            db_name,
-            gt_dir
-    )
+    if os.path.isfile(os.path.join(gt_dir, 'ground_truth.csv')):
+        gt = pandas.read_csv(os.path.join(gt_dir, 'ground_truth.csv'))
+    else:
+        # Parse ground truth DataFrame from mongo database
+        gt = get_simplified_gt(db_name, gt_dir)
     # Parse .bed file
     bed = parse_bed(bed_file)
     # Find sample ID matches in the ground truth
@@ -264,7 +266,7 @@ def combine(db_name, bed_file, samples_dir):
     gt['SAMPLE_ID'] = [path.split(os.sep)[0] for path in gt['SAMPLE_PATH']]
     # Output CSV
     gt.to_csv(
-            os.path.join(gt_dir, 'ground_truth.csv'),
+            os.path.join(gt_dir, 'ground_truth_small.csv'),
             sep='\t', encoding='utf8', index=False
     )
     # Combine all sample DataFrames into one big DataFrame
