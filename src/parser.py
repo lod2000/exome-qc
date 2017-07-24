@@ -6,8 +6,7 @@ import sys
 import pandas
 import pymongo
 import numpy
-# from bson import ObjectId
-import bson.ObjectId
+from bson import ObjectId
 
 def replace_key(dictionary, new_key, old_key):
     dictionary[new_key] = dictionary[old_key]
@@ -211,7 +210,7 @@ def find_samples(gt, samples_dir):
     potentials = set(gt['SAMPLE_PATH'])
     finals = []
     for potential in potentials:
-        if os.path.isfile(os.path.join(samples_dir, potential)):
+        if os.path.isfile(os.path.join(samples_dir, str(potential))):
             finals.append(os.path.join(*potential.split('/')))            
     return finals
 
@@ -250,7 +249,7 @@ def combine_samples(samples_dir, sample_paths):
 def combine(db_name, bed_file, samples_dir):
     gt_dir = os.path.join(sys.path[0], '..', 'data', 'ground_truth')
     if os.path.isfile(os.path.join(gt_dir, 'ground_truth.csv')):
-        gt = pandas.read_csv(os.path.join(gt_dir, 'ground_truth.csv'))
+        gt = pandas.read_csv(os.path.join(gt_dir, 'ground_truth.csv'), sep='\t')
     else:
         # Parse ground truth DataFrame from mongo database
         gt = get_simplified_gt(db_name, gt_dir)

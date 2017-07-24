@@ -109,11 +109,13 @@ def analyze_callers(df, panel, gt):
         tp = tp_df.shape[0]
         print(tp)
         tn = tn_df.shape[0]
-        # print(tn)
+        print(tn)
         fp = fp_df.shape[0]
-        # print(fp)
+        print(fp)
         fn = fn_df.shape[0]
         print(fn)
+        print(str(tp + fn))
+        print(str(tn+fp))
 
         # Analysis
         tpr = tp / (tp + fn) # True positive rate (sensitivity)
