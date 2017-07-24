@@ -4,15 +4,15 @@ import glob
 
 import pandas
 
-import parse_samples
+import parser
 import analysis
 
 # Get path to this file
 src_path = sys.path[0]
 # Set path to data directory
 data_path = os.path.join(src_path, '..', 'data')
-gt_file = glob.glob(os.path.join(data_path, 'ground_truth', '*.xlsx'))[0]
 gt_dir = os.path.join(data_path, 'ground_truth')
+gt_file = os.path.join(gt_dir, 'simple_ground_truth.csv')
 bed_file = glob.glob(os.path.join(data_path, 'panel', '*.bed'))[0]
 samples_dir = os.path.join(data_path, 'samples')
 # Combined data tab file path
@@ -22,19 +22,16 @@ weights_file = os.path.join(data_path, 'weights.tab')
 
 # Generate combined data file
 if not os.path.isfile(df_file):
-    parse_samples.combine(gt_file, bed_file, samples_dir)
+    parser.combine('2017-06-30_NgsReviewer_master', bed_file, samples_dir)
 
 # Read parsed CSV
 df = pandas.read_csv(df_file, sep='\t', low_memory=False)
+# Read ground truth CSV
+gt = pandas.read_csv(gt_file, sep='\t', low_memory=False)
 # Convert SAMPLE_IDs to Strings
 df['SAMPLE_ID'] = df['SAMPLE_ID'].astype(str)
-gt_parsed = parse_samples.parse_gt(gt_file)
-match_list = parse_samples.find_matches(
-        next(os.walk(samples_dir))[1], gt_parsed)
-gt = pandas.concat(
-        parse_samples.split_gt(gt_parsed, match_list)
-).reset_index(drop=True)
-panel = parse_samples.parse_bed(bed_file)
+gt['SAMPLE_ID'] = df['SAMPLE_ID'].astype(str)
+panel = parser.parse_bed(bed_file)
 
 # DataFrame terminal display options
 pandas.set_option('display.max_columns', 7)

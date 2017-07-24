@@ -12,6 +12,8 @@ def replace_key(dictionary, new_key, old_key):
     dictionary[new_key] = dictionary[old_key]
     del dictionary[old_key]
 
+# Get DataFrame of variants deemed "reportable" in final mongo database
+# Also outputs to ground_truth.csv
 def get_reportables(db_name, gt_dir):
     # Get mongo database
     # Requires mongorestore to have been run
@@ -29,8 +31,17 @@ def get_reportables(db_name, gt_dir):
             '_locus': {'$ne': ':'}
     })
     combined = []
-    print('Combining final and torrent documents...')
-    for final_doc in reportable_cursor:
+#    # Set up progress indicator
+#    sys.stdout.write('Parsing mongo database:  0%')
+#    sys.stdout.flush()
+    for i, final_doc in enumerate(reportable_cursor):
+#        # Progress indicator
+#        progress = int(100 * (i / reportable_cursor.count()))
+#        if progress < 10:
+#            sys.stdout.write('\b\b' + str(progress) + '%')
+#        else:
+#            sys.stdout.write('\b\b\b' + str(progress) + '%')
+#        sys.stdout.flush()
         torrent_doc = torrent.find_one(final_doc['torrent_result_id'])
         # Generate combined dict of torrent and final information
         try:
@@ -62,12 +73,14 @@ def get_reportables(db_name, gt_dir):
     # Generate combined DataFrame
     df = pandas.DataFrame(combined)
     # Output to CSV
-    df.to_csv(
-            os.path.join(gt_dir, 'ground_truth.csv'),
-            sep='\t', encoding='utf8', index=False
-    )
+#    df.to_csv(
+#            os.path.join(gt_dir, 'ground_truth.csv'),
+#            sep='\t', encoding='utf8', index=False
+#    )
     return df
 
+# Simplify reportable ground truth data to contain only relevant information
+# Also outputs to simple_ground_truth.csv
 def get_simplified_gt(db_name, gt_dir):
     df = get_reportables(db_name, gt_dir)
     print('Generating simplified data frame...')
@@ -146,70 +159,12 @@ def get_simplified_gt(db_name, gt_dir):
             i for i, dna in enumerate(simple_df['DNA_CHANGE']) 
             if not dna == '' and not simple_df['PROTEIN_CHANGE'][i] == ''
     ]]
-    # Output CSV
-    simple_df.to_csv(
-            os.path.join(gt_dir, 'simple_ground_truth.csv'),
-            sep='\t', encoding='utf8', index=False
-    )
+#    # Output CSV
+#    simple_df.to_csv(
+#            os.path.join(gt_dir, 'simple_ground_truth.csv'),
+#            sep='\t', encoding='utf8', index=False
+#    )
     return simple_df
-
-# Parse the ground truth file into a DataFrame
-def parse_gt(excel_file):
-    # Create data frame from Excel file
-    df = pandas.read_excel(
-            excel_file, 'Sheet2', index_col=None, na_values=['NA']
-    )
-    # These two columns are the only ones we care about
-    ids = df['SAMPLE ID']
-    variants = df['"REPORTABLE" VARIANTS CHECKED in PPMP 0.3.1']
-
-    sample_ids = []
-    genes = []
-    dna_changes = []
-    protein_changes = []
-
-    for index, sample in enumerate(variants):
-        sample_variants = sample.split('\n')
-        sample_id = ids[index]
-        # Split each line of the last column into gene, dna, and protein info
-        for variant in sample_variants:
-            if (not re.search('^NOTE', variant)
-                    and not variant == ''
-                    and not re.search('^Missed', variant)):
-                genes.append(variant.split(' ')[0])
-                sample_ids.append(sample_id)
-                # Get DNA change
-                try:
-                    dna_change = re.search('c\..*[A-Z]:', variant).group(0)\
-                            .split(':')[0]
-                except AttributeError:
-                    dna_change = ''
-                dna_changes.append(dna_change)
-                # Get protein change
-                try:
-                    protein_change = re.search('p\..*$', variant).group(0)
-                except AttributeError:
-                    protein_change = ''
-                protein_changes.append(protein_change)
-
-    # Convert all sample IDs to strings (some are ints)
-    sample_ids = [str(_id) for _id in sample_ids]
-    output = pandas.DataFrame({ 'SAMPLE_ID'      : sample_ids,
-                                'GENE'           : genes,
-                                'DNA_CHANGE'     : dna_changes,
-                                'PROTEIN_CHANGE' : protein_changes })
-    """
-    Example output:
-            DNA_CHANGE    GENE  PROTEIN_CHANGE   SAMPLE_ID
-    0         c.364C>T  CDKN2A       p.Arg122*  1530804642
-    1         c.406G>A   CRLF2     p.Val136Met  1530804642
-    2        c.1682G>A     NF1       p.Trp561*  1530804642
-    ...
-    6         c.740A>G    ABL1     p.Lys247Arg  1601912547
-    7  c.384_386dupGCA  ARID1B     p.Gln129dup  1601912547
-    ...
-    """
-    return output
 
 def parse_bed(bed):
     parsed = pandas.read_csv(
@@ -239,28 +194,14 @@ def split_panel(panel):
             'CHROMOSOME' : chromosomes
     }).reset_index(drop=True)
 
-# Takes a list of sample IDs and ground truth DataFrame
-# These will be slightly different, so this method matches IDs from the first
-# list to names from the second.
-# Returns a list of tuples, with the first string in the tuple being the sample
-# folder name, and the second being the name in the ground truth DataFrame
-def find_matches(sample_ids, gt_parsed):
-    # Initialize dictionary, with
-    # first item = name of sample folder,
-    # second item = ID in ground truth
-    match_list = []
-    # Search for similar ID in ground truth
-    candidate_ids = set(gt_parsed['SAMPLE_ID']) # List of IDs in ground truth
-    for sample_id in sample_ids:
-        sample = sample_id.lower().replace(' ','').split('_')[-1]
-        for candidate_id in candidate_ids:
-            candidate = candidate_id.lower().replace(' ','')
-            candidate_list = candidate_id.lower().split(' ')
-            # Check if candidate and sample IDs are the same,
-            # or if all the parts of the candidate ID are present in the sample
-            if candidate in sample or all(x in sample for x in candidate_list):
-                match_list.append((sample_id, candidate_id))
-    return match_list
+# Returns the names of the variant callers
+def get_og_caller_names(sample):
+    headers = list(sample)
+    return [h for h in headers if re.search('^GT_', h)]
+
+def get_caller_names(sample):
+    headers = list(sample)
+    return [h for h in headers if re.search('^GT_', h) or re.search('^COMB_', h)]
 
 # Returns list of sample paths from ground truth that are in data/samples
 def find_samples(gt, samples_dir):
@@ -271,32 +212,6 @@ def find_samples(gt, samples_dir):
         if os.path.isfile(os.path.join(samples_dir, potential)):
             finals.append(os.path.join(*potential.split('/')))            
     return finals
-
-# Splits ground truth parsed data frame into separate data frames for each ID
-# Only generates those for which there are target_transcripts files
-def split_gt(gt_parsed, match_list):
-    # List of data frames
-    gt_df_list = []
-    # List of unique IDs in the ground truth
-    unique_ids = [sample[1] for sample in match_list]
-
-    for unique_id in unique_ids:
-        # Find all indices with this ID
-        indices = gt_parsed[gt_parsed['SAMPLE_ID'] == unique_id].index.tolist()
-        # Create a data frame
-        sample_gt = pandas.DataFrame(gt_parsed[indices[0]:indices[-1]+1])
-        gt_df_list.append(sample_gt.reset_index(drop=True))
-
-    return gt_df_list
-
-# Returns the names of the variant callers
-def get_og_caller_names(sample):
-    headers = list(sample)
-    return [h for h in headers if re.search('^GT_', h)]
-
-def get_caller_names(sample):
-    headers = list(sample)
-    return [h for h in headers if re.search('^GT_', h) or re.search('^COMB_', h)]
 
 # Returns a list of DataFrames of samples for which matches exist in the ground
 # truth
@@ -331,25 +246,27 @@ def combine_samples(samples_dir, sample_paths):
     return df
 
 def combine(db_name, bed_file, samples_dir):
+    gt_dir = os.path.join(sys.path[0], '..', 'data', 'ground_truth')
     # Parse ground truth DataFrame from mongo database
     gt = get_simplified_gt(
             db_name,
-            os.path.join(sys.path[0], '..', 'data', 'ground_truth')
+            gt_dir
     )
     # Parse .bed file
     bed = parse_bed(bed_file)
     # Find sample ID matches in the ground truth
     sample_paths = find_samples(gt, samples_dir)
-    # Test
-    print(sample_paths)
     # Combine ground truth DataFrames
     gt = gt.iloc[[
             i for i, path in enumerate(gt['SAMPLE_PATH']) 
             if path in sample_paths
     ]].reset_index(drop=True)
     gt['SAMPLE_ID'] = [path.split(os.sep)[0] for path in gt['SAMPLE_PATH']]
-    # Test
-    print(gt)
+    # Output CSV
+    gt.to_csv(
+            os.path.join(gt_dir, 'ground_truth.csv'),
+            sep='\t', encoding='utf8', index=False
+    )
     # Combine all sample DataFrames into one big DataFrame
     df = combine_samples(samples_dir, sample_paths)
     # List of variant caller names
