@@ -8,6 +8,151 @@ import pandas
 import pymongo
 import numpy
 
+def replace_key(dictionary, new_key, old_key):
+    dictionary[new_key] = dictionary[old_key]
+    del dictionary[old_key]
+
+def get_reportables(db_name, gt_dir):
+    # Get mongo database
+    # Requires mongorestore to have been run
+    client = pymongo.MongoClient()
+    db = client[db_name]
+    # Mongo collections
+    final = db.mongo_final.final_results
+    torrent = db.mongo_torrent.torrent_results
+    server = db.mongo_server.server_downloads
+    # Generate cursor for reportable final documents with a locus
+    reportable_cursor = final.find({
+            'reportable': True, 
+            'germline': False, 
+            'ion_junk': False,
+            '_locus': {'$ne': ':'}
+    })
+    combined = []
+    print('Combining final and torrent documents...')
+    for final_doc in reportable_cursor:
+        torrent_doc = torrent.find_one(final_doc['torrent_result_id'])
+        # Generate combined dict of torrent and final information
+        try:
+            # Replace potential duplicate key names
+            replace_key(final_doc, 'final_updated_at', 'updated_at')
+            replace_key(torrent_doc, 'torrent_updated_at', 'updated_at')
+            replace_key(torrent_doc, 'torrent_result_id', '_id')
+            replace_key(final_doc, 'final_result_id', '_id')
+            # Remove unnecessary fields
+            if 'snapshot' in torrent_doc:
+                del torrent_doc['snapshot']
+            del final_doc['ion_junk']
+            del final_doc['reportable']
+            del final_doc['germline']
+            # Get information from server_downloads
+            server_doc = server.find_one(torrent_doc['server_download_id'])
+            if not server_doc == None:
+                # Sample ID
+                if 'sample_id' in server_doc:
+                    torrent_doc['server_sample_id'] = server_doc['sample_id']
+                # Sample annotation tab file path
+                if 'ppmp_annotation_path' in server_doc:
+                    torrent_doc['ppmp_annotation_path'] = server_doc['ppmp_annotation_path']
+            # Combine torrent and final documents
+            combined.append({**torrent_doc,  **final_doc})
+        # In case there isn't a matching torrent result
+        except TypeError:
+            print('No torrent result for ' + str(final_doc['torrent_result_id']))
+    # Generate combined DataFrame
+    df = pandas.DataFrame(combined)
+    # Output to CSV
+    df.to_csv(
+            os.path.join(gt_dir, 'ground_truth.csv'),
+            sep='\t', encoding='utf8', index=False
+    )
+    return df
+
+def get_simplified_gt(db_name, gt_dir):
+    df = get_reportables(db_name, gt_dir)
+    print('Generating simplified data frame...')
+    # Remove MiSeq entries
+    df = df.iloc[[i for i, miseq in enumerate(df['miseq_run']) if not miseq]]    
+    df.reset_index(drop=True, inplace=True)
+    # Initialize lists
+    sample_names = []
+    chromosomes = []
+    positions = []
+    genes = []
+    dna_changes = []
+    protein_changes = []
+    ppmp_annotation_paths = []
+    headers = list(df)
+    # Cycle through variants
+    for i in range(0, df.shape[0]):
+        # Get paths to sample annotation tab files
+        if df['ppmp_annotation_path'].notnull()[i]:
+            ppmp_annotation_paths.append(df['ppmp_annotation_path'][i].split('Results/')[-1])
+        else:
+            ppmp_annotation_paths.append('')
+        sample_names.append(df['sample_name'][i])
+        chromosomes.append(df['_locus'][i].split(':')[0])
+        positions.append(df['_locus'][i].split(':')[1])
+        # Try to get gene, dna, and protein data from the same column
+        variant = str(df['reported_variant'][i])
+        if re.search('^[A-Z0-9]*\sc.[^\s]*:', variant):
+            genes.append(variant.split()[0])
+            dna_changes.append(variant.split()[1].split(':')[0])
+            try:
+                protein_changes.append(re.search('p\..*$', variant).group(0))
+            except AttributeError:
+                protein_changes.append('')
+        # Pull gene, dna, and protein data from different locations
+        else:
+            # Gene
+            genes.append('')
+            gene_columns = [h for h in headers if re.search('gene', h)]
+            gene_columns += ['biomarker_name', 'protein_id']
+            for column in gene_columns:
+                if re.search('^[A-Z]', str(df[column][i])):
+                    genes[i] = df[column][i]
+                    break
+            # DNA
+            dna_changes.append('')
+            dna_columns = [
+                    'hgvs_coding_change', 'snp_eff_coding',
+                    'snpeff_annotated_dna_change'
+            ]
+            for column in dna_columns:
+                dna_search = re.search('c.[^\s]*$', str(df[column][i]))
+                if dna_search:
+                    dna_changes[i] = dna_search.group(0)
+                    break
+            # Protein
+            protein_changes.append('')
+            protein_columns = [
+                    'hgvs_protein_change', 'snp_eff_protein',
+                    'snpeff_annotated_protein_change'
+            ]
+            for column in protein_columns:
+                protein_search = re.search('p.[^\s]*$', str(df[column][i]))
+                if protein_search:
+                    protein_changes[i] = protein_search.group(0)
+                    break
+    # Create DataFrame with only necessary information
+    simple_df = pandas.DataFrame({
+            'SAMPLE_NAME': sample_names, 'CHROMOSOME': chromosomes,
+            'POSITION': positions, 'GENE': genes, 'DNA_CHANGE': dna_changes,
+            'PROTEIN_CHANGE': protein_changes,
+            'SAMPLE_PATH': ppmp_annotation_paths 
+    })
+    # Strip out variants without DNA or protein information
+    simple_df = simple_df.iloc[[
+            i for i, dna in enumerate(simple_df['DNA_CHANGE']) 
+            if not dna == '' and not simple_df['PROTEIN_CHANGE'][i] == ''
+    ]]
+    # Output CSV
+    simple_df.to_csv(
+            os.path.join(gt_dir, 'simple_ground_truth.csv'),
+            sep='\t', encoding='utf8', index=False
+    )
+    return simple_df
+
 # Parse the ground truth file into a DataFrame
 def parse_gt(excel_file):
     # Create data frame from Excel file
@@ -117,6 +262,16 @@ def find_matches(sample_ids, gt_parsed):
                 match_list.append((sample_id, candidate_id))
     return match_list
 
+# Returns list of sample paths from ground truth that are in data/samples
+def find_samples(gt, samples_dir):
+    samples = next(os.walk(samples_dir))[1]
+    potentials = set(gt['SAMPLE_PATH'])
+    finals = []
+    for potential in potentials:
+        if os.path.isfile(os.path.join(samples_dir, potential)):
+            finals.append(os.path.join(*potential.split('/')))            
+    return finals
+
 # Splits ground truth parsed data frame into separate data frames for each ID
 # Only generates those for which there are target_transcripts files
 def split_gt(gt_parsed, match_list):
@@ -145,19 +300,12 @@ def get_caller_names(sample):
 
 # Returns a list of DataFrames of samples for which matches exist in the ground
 # truth
-def get_samples(samples_dir, match_list):
+def combine_samples(samples_dir, sample_paths):
     # List of sample DataFrames
     df_list = []
-    for sample in match_list:
-        # Get IDs
-        sample_id = sample[0]
-        gt_id = sample[1]
-        # Get sample file path
-        sample_path = os.path.join(samples_dir, sample_id)
-        tab_path = os.path.join(
-                sample_path, next(os.walk(sample_path))[1][0],
-                'vDEMO1', 'r1', 'hg19', 'panel', 'ann.target_transcripts.tab'
-        )
+    for sample_path in sample_paths:
+        sample_id = sample_path.split(os.sep)[0]
+        tab_path = os.path.join(samples_dir, sample_path)
         # Import sample CSV
         sample_df = pandas.read_csv(tab_path, sep='\t')
         # Get variant caller names
@@ -176,27 +324,37 @@ def get_samples(samples_dir, match_list):
                 'SNPEFF_ANNOTATED_PROTEIN_CHANGE': 'PROTEIN_CHANGE'
         })
         # Add SAMPLE_ID column (for when this DataFrame will be merged with others)
-        altered_df['SAMPLE_ID'] = sample_df.shape[0] * [gt_id]
+        altered_df['SAMPLE_ID'] = sample_df.shape[0] * [sample_id]
         # Add sample DataFrame to list
         df_list.append(altered_df.reset_index(drop=True))
-    return df_list
+    df = pandas.concat(df_list).reset_index(drop=True)
+    return df
 
-def combine(gt_file, bed_file, samples_dir):
-    # Parse ground truth Excel file
-    gt_parsed = parse_gt(gt_file)
+def combine(db_name, bed_file, samples_dir):
+    # Parse ground truth DataFrame from mongo database
+    gt = get_simplified_gt(
+            db_name,
+            os.path.join(sys.path[0], '..', 'data', 'ground_truth')
+    )
     # Parse .bed file
     bed = parse_bed(bed_file)
-    # Find sample ID matches
-    match_list = find_matches(next(os.walk(samples_dir))[1], gt_parsed)
+    # Find sample ID matches in the ground truth
+    sample_paths = find_samples(gt, samples_dir)
+    # Test
+    print(sample_paths)
     # Combine ground truth DataFrames
-    gt = pandas.concat(split_gt(gt_parsed, match_list)).reset_index(drop=True)
-    # List of sample DataFrames
-    samples_list = get_samples(samples_dir, match_list)
-    # List of variant caller names
-    callers = get_caller_names(samples_list[0])
-
+    gt = gt.iloc[[
+            i for i, path in enumerate(gt['SAMPLE_PATH']) 
+            if path in sample_paths
+    ]].reset_index(drop=True)
+    gt['SAMPLE_ID'] = [path.split(os.sep)[0] for path in gt['SAMPLE_PATH']]
+    # Test
+    print(gt)
     # Combine all sample DataFrames into one big DataFrame
-    df = pandas.concat(samples_list).reset_index(drop=True)
+    df = combine_samples(samples_dir, sample_paths)
+    # List of variant caller names
+    callers = get_caller_names(df)
+
     # List of variants covered by the small panel
     covered_list = df.shape[0] * [False]
     # List of variants reported in the ground truth
@@ -270,10 +428,10 @@ if __name__ == "__main__":
             ground truth file and produces false negatives, false positives,\
             and true positives.'
     )
-    # First argument: ground truth Excel file
-    arg_parser.add_argument('file1', help='ground truth .xlsx', action='store')
+    # First argument: mongo database name
+    arg_parser.add_argument('db_name', help='mongo db name', action='store')
     # Second argument: small panel gene list, bed file
-    arg_parser.add_argument('file2', help='.bed', action='store')
+    arg_parser.add_argument('panel_file', help='.bed', action='store')
     # Third argument: directory containing sample directories
     arg_parser.add_argument(
             'directory', help='directory containing all sample directories',
@@ -282,8 +440,8 @@ if __name__ == "__main__":
 
     # Parse arguments
     args = arg_parser.parse_args()
-    gt_file = args.file1
-    bed_file = args.file2
+    db_name = args.db_name
+    bed_file = args.panel_file
     samples_dir = args.directory
 
-    combine(gt_file, bed_file, samples_dir)
+    combine(db_name, bed_file, samples_dir)
