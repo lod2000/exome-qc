@@ -96,8 +96,7 @@ def analyze_callers(df, panel):
     })
 
     for caller in parser.get_caller_names(df):
-        print('\n')
-        print(caller)
+        print('Analyzing calls by ' + caller)
 
         # True positives DataFrame
         tp_df = get_true_positives(df, caller)
@@ -110,15 +109,15 @@ def analyze_callers(df, panel):
 
         # Count rows in DataFrames
         tp = tp_df.shape[0]
-        print(tp)
+        # print(tp)
         tn = tn_df.shape[0]
-        print(tn)
+        # print(tn)
         fp = fp_df.shape[0]
-        print(fp)
+        # print(fp)
         fn = fn_df.shape[0]
-        print(fn)
-        print(str(tp + fn))
-        print(str(tn+fp))
+        # print(fn)
+        # print(str(tp + fn))
+        # print(str(tn+fp))
 
         # Analysis
         tpr = tp / (tp + fn) # True positive rate (sensitivity)

@@ -49,7 +49,7 @@ try:
     analysis_df.to_csv(
             analysis_file, sep='\t', encoding='utf-8', index=False
     )
-    print('\nOutput to file ' + analysis_file)
+    print('Output to file ' + analysis_file)
 except PermissionError:
     print('Another program is using the file analysis.csv or combined.tab.\
            Please close and try again.')
