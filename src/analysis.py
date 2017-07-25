@@ -4,35 +4,39 @@ import pandas
 import numpy
 from scipy.optimize import fmin
 from scipy.optimize import minimize
+import matplotlib.pyplot as pyplot
 
-import sample_parser
+import parser
 
 # Returns DataFrame of true positives (reportables)
-def get_true_positives(df, caller_name):
-    return df.iloc[[
-            i for i, reportable in enumerate(df['REPORTABLE'])
-            if reportable and not df[caller_name][i] == './.'
-    ]].reset_index(drop=True)
+def get_true_positives(df, caller):
+#    return df.iloc[[
+#            i for i, reportable in enumerate(df['REPORTABLE'])
+#            if reportable and not df[caller_name][i] == './.'
+#    ]].reset_index(drop=True)
+    return df.iloc[[i for i, call in enumerate(df[caller]) if call == 'TP']].reset_index(drop=True)
 
 # Covered, not reportable
 # Sometimes a caller will find multiple mutations in the same location. These
 # are counted as separate false positives
-def get_false_positives(df, caller_name):
-    return df.iloc[[
-            i for i, covered in enumerate(df['COVERED'])
-            if covered and not df['REPORTABLE'][i]
-            and not df[caller_name][i] == './.'
-    ]].reset_index(drop=True)
+def get_false_positives(df, caller):
+#    return df.iloc[[
+#            i for i, covered in enumerate(df['COVERED'])
+#            if covered and not df['REPORTABLE'][i]
+#            and not df[caller][i] == './.'
+#    ]].reset_index(drop=True)
+    return df.iloc[[i for i, call in enumerate(df[caller]) if call == 'FP']].reset_index(drop=True)
 
 # Returns DataFrame from ground truth of variants not detected by caller
-def get_false_negatives(tp, gt):
-    return gt.iloc[[
-            i for i in range(0, gt.shape[0])
-            if not (gt['GENE'][i] in tp['GENE'].tolist()
-            and gt['DNA_CHANGE'][i] in tp['DNA_CHANGE'].tolist()
-            and gt['PROTEIN_CHANGE'][i] in tp['PROTEIN_CHANGE'].tolist()
-            and gt['SAMPLE_ID'][i] in tp['SAMPLE_ID'].tolist())
-    ]].reset_index(drop=True)
+def get_false_negatives(df, caller):
+#    return gt.iloc[[
+#            i for i in range(0, gt.shape[0])
+#            if not (gt['GENE'][i] in tp['GENE'].tolist()
+#            and gt['DNA_CHANGE'][i] in tp['DNA_CHANGE'].tolist()
+#            and gt['PROTEIN_CHANGE'][i] in tp['PROTEIN_CHANGE'].tolist()
+#            and gt['SAMPLE_ID'][i] in tp['SAMPLE_ID'].tolist())
+#    ]].reset_index(drop=True)
+    return df.iloc[[i for i, call in enumerate(df[caller]) if call == 'FN']].reset_index(drop=True)
 
 # Not covered, not reportable
 def get_unclassified(df, caller_name):
@@ -46,7 +50,7 @@ def get_unclassified(df, caller_name):
 # by the small panel
 # TODO speed up
 def get_true_negatives(fp, caller_name, panel):
-    positions = sample_parser.split_panel(panel)
+    positions = parser.split_panel(panel)
     all_covered = fp.iloc[[
             i for i, covered in enumerate(fp['COVERED'])
             if covered and not fp[caller_name][i] == './.'
@@ -80,7 +84,7 @@ def get_true_negatives(fp, caller_name, panel):
     return all_positions
 
 # Returns DataFrame of analysis
-def analyze_callers(df, panel, gt):
+def analyze_callers(df, panel):
     # Initialize analysis DataFrame
     analysis_df = pandas.DataFrame({
             'ANALYSIS' : ['True Positives', 'True Negatives',
@@ -92,9 +96,8 @@ def analyze_callers(df, panel, gt):
             'Accuracy', 'Matthews Correlation Coefficient']
     })
 
-    for caller in sample_parser.get_caller_names(df):
-        print('\n')
-        print(caller)
+    for caller in parser.get_caller_names(df):
+        print('Analyzing calls by ' + caller)
 
         # True positives DataFrame
         tp_df = get_true_positives(df, caller)
@@ -103,17 +106,19 @@ def analyze_callers(df, panel, gt):
         # True negatives in DataFrame
         tn_df = get_true_negatives(fp_df, caller, panel)
         # False negatives DataFrame
-        fn_df = get_false_negatives(tp_df, gt)
+        fn_df = get_false_negatives(df, caller)
 
         # Count rows in DataFrames
         tp = tp_df.shape[0]
-        print(tp)
+        # print(tp)
         tn = tn_df.shape[0]
         # print(tn)
         fp = fp_df.shape[0]
         # print(fp)
         fn = fn_df.shape[0]
-        print(fn)
+        # print(fn)
+        # print(str(tp + fn))
+        # print(str(tn+fp))
 
         # Analysis
         tpr = tp / (tp + fn) # True positive rate (sensitivity)
@@ -168,7 +173,7 @@ def f3(x):
 
 # WIP
 def generate_combined_caller_weights(df):
-    callers = sample_parser.get_og_caller_names(df)
+    callers = parser.get_og_caller_names(df)
     weights = []
     for k, caller in enumerate(callers):
         print(caller)
@@ -188,7 +193,7 @@ def generate_combined_caller_weights(df):
     return weights
 
 def add_combined_caller(df, weights):
-    callers = sample_parser.get_og_caller_names(df)
+    callers = parser.get_og_caller_names(df)
     combined_status = []
     for i in range(0, df.shape[0]):
         weighted_calls = []
@@ -203,7 +208,7 @@ def add_combined_caller(df, weights):
     ]
 
 # def add_x_or_more(df):
-#     for cutoff in range(2, len(sample_parser.get_og_caller_names(df)) + 1):
+#     for cutoff in range(2, len(parser.get_og_caller_names(df)) + 1):
 #         name = 'COMB_' + str(cutoff) + '_OR_MORE'
 #         df[name] = [
 #                 True if callers >= cutoff else './.'
@@ -218,7 +223,7 @@ def add_2_or_more(df):
 
 # WIP
 def add_differences(df):
-    callers = sample_parser.get_og_caller_names(df)
+    callers = parser.get_og_caller_names(df)
     all_except = list(callers)
     for caller1 in callers:
         all_except.remove(caller1)
@@ -232,3 +237,34 @@ def add_differences(df):
                     and not df[caller2][i] == './.'
                     else './.' for i in range(0, df.shape[0])
             ]
+
+def plot_callers(analysis_df):
+    callers = [c.split('_')[-1] for c in list(analysis_df.columns)[1:]]
+    at = analysis_df.transpose().reset_index()
+    at.rename(columns = at.iloc[0], inplace=True)
+    at = at[1:].reset_index(drop=True)
+
+    # Create scatter plot
+    pyplot.scatter(
+            at['False Positives'], 
+            at['True Positives'], 
+            marker='o', 
+    )
+    # Plot labels
+    pyplot.ylim(ymin=0)
+    pyplot.xlim(xmin=0)
+    pyplot.title('Mutation caller positive hits')
+    pyplot.ylabel('True positives')
+    pyplot.xlabel('False positives')
+    # Point labels
+    for caller, x, y in zip(
+            callers, at['False Positives'], at['True Positives']
+    ):
+        pyplot.annotate(
+                caller, xy=(x, y), 
+                xytext=(-10, -10), 
+                textcoords='offset points', 
+                ha='right', 
+                va='bottom'
+        )
+    pyplot.show()

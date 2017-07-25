@@ -2,7 +2,7 @@
 
 ## Install necessary libraries
 
-`sudo pip install pandas xlrd`
+`sudo pip install pandas xlrd scipy`
 
 ## Data structure
 
