@@ -159,7 +159,7 @@ def get_simplified_gt(db_name, gt_dir):
     simple_df = simple_df.iloc[[
             i for i, dna in enumerate(simple_df['DNA_CHANGE']) 
             if not dna == '' and not simple_df['PROTEIN_CHANGE'][i] == ''
-    ]]
+    ]].reset_index(drop=True)
     # Output CSV
     simple_df.to_csv(
             os.path.join(gt_dir, 'ground_truth.csv'),
@@ -263,13 +263,19 @@ def combine(db_name, bed_file, samples_dir):
             if path in sample_paths
     ]].reset_index(drop=True)
     gt['SAMPLE_ID'] = [path.split(os.sep)[0] for path in gt['SAMPLE_PATH']]
+    test_row = pandas.DataFrame({
+            'CHROMOSOME':['chr0'], 'DNA_CHANGE':['c.00X>Y'], 'GENE':['TEST'],
+            'POSITION':[0], 'PROTEIN_CHANGE':['p.Tes00Est'], 'SMPLE_NAME':[''],
+            'SAMPLE_PATH':[gt['SAMPLE_PATH'][0]], 'SAMPLE_ID':[gt['SAMPLE_ID'][0]]
+    })
+    gt = gt.append(test_row, ignore_index=True)
     # Output CSV
     gt.to_csv(
             os.path.join(gt_dir, 'ground_truth_small.csv'),
             sep='\t', encoding='utf8', index=False
     )
     # Combine all sample DataFrames into one big DataFrame
-    df = combine_samples(samples_dir, sample_paths)
+    df = combine_samples(samples_dir, sample_paths).reset_index(drop=True)
     # List of variant caller names
     callers = get_caller_names(df)
 
@@ -318,10 +324,31 @@ def combine(db_name, bed_file, samples_dir):
             for g in range(0, gt.shape[0]):
                 # If the variant info matches between the DataFrame and ground truth
                 if (df['SAMPLE_ID'][s] == gt['SAMPLE_ID'][g]
+                        and df['POSITION'][s] == gt['POSITION'][g]
                         and df['GENE'][s] == gt['GENE'][g]
                         and df['DNA_CHANGE'][s] == gt['DNA_CHANGE'][g]
                         and df['PROTEIN_CHANGE'][s] == gt['PROTEIN_CHANGE'][g]):
                     reportables_list[s] = True
+        
+        # Find true positives, etc.
+        for caller in callers:
+            call = ''
+            if reportables_list[s]:
+                if df[caller][s] == './.':
+                    call = 'FN' # false negative
+                else:
+                    call = 'TP' # true positive
+            elif covered_list[s]:
+                if df[caller][s] == './.':
+                    call = 'TN' # true negative
+                else:
+                    call = 'FP' # false positive
+            else:
+                if df[caller][s] == './.':
+                    call = 'UN' # unclassified negative
+                else:
+                    call = 'UP' # unclassified positive
+            df.set_value(s, caller, call)
 
     sys.stdout.write('\b\b\b100%')
     sys.stdout.flush
@@ -329,6 +356,14 @@ def combine(db_name, bed_file, samples_dir):
     # Add covered and reportable lists to DataFrame
     df['COVERED'] = covered_list
     df['REPORTABLE'] = reportables_list
+    false_negs = gt.iloc[[                                                            
+            i for i in range(0, gt.shape[0])                                    
+            if not (gt['GENE'][i] in df['GENE'].tolist()                        
+            and gt['DNA_CHANGE'][i] in df['DNA_CHANGE'].tolist()                
+            and gt['PROTEIN_CHANGE'][i] in df['PROTEIN_CHANGE'].tolist()        
+            and gt['SAMPLE_ID'][i] in df['SAMPLE_ID'].tolist())                 
+    ]].reset_index(drop=True)
+    print(false_negs)
     # Create parsed tab file
     df.to_csv(
             os.path.join(samples_dir, 'parsed.tab'), sep='\t',

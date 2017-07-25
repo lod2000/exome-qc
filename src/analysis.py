@@ -8,21 +8,23 @@ import matplotlib.pyplot as pyplot
 import parser
 
 # Returns DataFrame of true positives (reportables)
-def get_true_positives(df, caller_name):
-    return df.iloc[[
-            i for i, reportable in enumerate(df['REPORTABLE'])
-            if reportable and not df[caller_name][i] == './.'
-    ]].reset_index(drop=True)
+def get_true_positives(df, caller):
+#    return df.iloc[[
+#            i for i, reportable in enumerate(df['REPORTABLE'])
+#            if reportable and not df[caller_name][i] == './.'
+#    ]].reset_index(drop=True)
+    return df.iloc[[i for i, call in enumerate(df[caller]) if call == 'TP']].reset_index(drop=True)
 
 # Covered, not reportable
 # Sometimes a caller will find multiple mutations in the same location. These
 # are counted as separate false positives
-def get_false_positives(df, caller_name):
-    return df.iloc[[
-            i for i, covered in enumerate(df['COVERED'])
-            if covered and not df['REPORTABLE'][i]
-            and not df[caller_name][i] == './.'
-    ]].reset_index(drop=True)
+def get_false_positives(df, caller):
+#    return df.iloc[[
+#            i for i, covered in enumerate(df['COVERED'])
+#            if covered and not df['REPORTABLE'][i]
+#            and not df[caller][i] == './.'
+#    ]].reset_index(drop=True)
+    return df.iloc[[i for i, call in enumerate(df[caller]) if call == 'FP']].reset_index(drop=True)
 
 # Returns DataFrame from ground truth of variants not detected by caller
 def get_false_negatives(tp, gt):
