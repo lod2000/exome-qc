@@ -39,13 +39,13 @@ pandas.set_option('display.width', 300)
 
 analysis_df = analysis.analyze_callers(df, panel)
 # analysis.plot_callers(analysis_df)
-analysis_file = os.path.join(data_path, 'analysis.csv')
+analysis_file = os.path.join(output_dir, 'analysis.csv')
 try:
-    df.to_csv(
-            os.path.join(samples_dir, 'combined.tab'), sep='\t',
-            encoding='utf-8', index=False
-    )
-    print('\nOutput to data/samples/combined.tab')
+#    df.to_csv(
+#            os.path.join(samples_dir, 'combined.tab'), sep='\t',
+#            encoding='utf-8', index=False
+#    )
+#    print('\nOutput to data/samples/combined.tab')
     analysis_df.to_csv(
             analysis_file, sep='\t', encoding='utf-8', index=False
     )
