@@ -96,6 +96,9 @@ def get_simplified_gt(db_name, gt_dir):
     dna_changes = []
     protein_changes = []
     ppmp_annotation_paths = []
+    target_allele_counts = []
+    exac_freq_estimates = []
+    nkg_freq_estimates = []
     headers = list(df)
     # Cycle through variants
     for i in range(0, df.shape[0]):
@@ -107,6 +110,9 @@ def get_simplified_gt(db_name, gt_dir):
         sample_names.append(df['sample_name'][i])
         chromosomes.append(df['_locus'][i].split(':')[0])
         positions.append(df['_locus'][i].split(':')[1])
+        target_allele_counts.append(df['target_allele_count'][i])
+        exac_freq_estimates.append(df['exac_freq_estimate'][i])
+        nkg_freq_estimates.append(df['nkg_freq_estimate'][i])
         # Try to get gene, dna, and protein data from the same column
         variant = str(df['reported_variant'][i])
         if re.search('^[A-Z0-9]*\sc.[^\s]*:', variant):
@@ -153,7 +159,10 @@ def get_simplified_gt(db_name, gt_dir):
             'SAMPLE_NAME': sample_names, 'CHROMOSOME': chromosomes,
             'POSITION': positions, 'GENE': genes, 'DNA_CHANGE': dna_changes,
             'PROTEIN_CHANGE': protein_changes,
-            'SAMPLE_PATH': ppmp_annotation_paths 
+            'SAMPLE_PATH': ppmp_annotation_paths,
+            'TARGET_ALLELE_COUNT': target_allele_counts,
+            'EXAC_FREQ_ESTIMATE': exac_freq_estimates,
+            '1KG_FREQ_ESTIMATE': nkg_freq_estimates
     })
     # Strip out variants without DNA or protein information
     simple_df = simple_df.iloc[[
@@ -265,7 +274,7 @@ def combine(db_name, bed_file, samples_dir):
     gt['SAMPLE_ID'] = [path.split(os.sep)[0] for path in gt['SAMPLE_PATH']]
     test_row = pandas.DataFrame({
             'CHROMOSOME':['chr0'], 'DNA_CHANGE':['c.00X>Y'], 'GENE':['TEST'],
-            'POSITION':[0], 'PROTEIN_CHANGE':['p.Tes00Est'], 'SMPLE_NAME':[''],
+            'POSITION':[0], 'PROTEIN_CHANGE':['p.Tes00Est'], 'SAMPLE_NAME':[''],
             'SAMPLE_PATH':[gt['SAMPLE_PATH'][0]], 'SAMPLE_ID':[gt['SAMPLE_ID'][0]]
     })
     gt = gt.append(test_row, ignore_index=True)
@@ -278,6 +287,22 @@ def combine(db_name, bed_file, samples_dir):
     df = combine_samples(samples_dir, sample_paths).reset_index(drop=True)
     # List of variant caller names
     callers = get_caller_names(df)
+    # Find variants in gt not found by any caller
+    print('Finding false negatives...')
+    false_negs = gt.iloc[[                                                            
+            i for i in range(0, gt.shape[0])                                    
+            if not (gt['GENE'][i] in df['GENE'].tolist()                        
+            and gt['DNA_CHANGE'][i] in df['DNA_CHANGE'].tolist()                
+            and gt['PROTEIN_CHANGE'][i] in df['PROTEIN_CHANGE'].tolist()        
+            and gt['SAMPLE_ID'][i] in df['SAMPLE_ID'].tolist())                 
+    ]].reset_index(drop=True)
+    del false_negs['SAMPLE_PATH']
+    del false_negs['SAMPLE_NAME']
+    for caller in callers:
+        false_negs[caller] = ['./.'] * false_negs.shape[0]
+    false_negs['TOTAL_CALLERS'] = [0] * false_negs.shape[0]
+    df = df.append(false_negs, ignore_index=True)
+    print(false_negs)
 
     # List of variants covered by the small panel
     covered_list = df.shape[0] * [False]
@@ -324,7 +349,7 @@ def combine(db_name, bed_file, samples_dir):
             for g in range(0, gt.shape[0]):
                 # If the variant info matches between the DataFrame and ground truth
                 if (df['SAMPLE_ID'][s] == gt['SAMPLE_ID'][g]
-                        and df['POSITION'][s] == gt['POSITION'][g]
+                        and int(df['POSITION'][s]) == int(gt['POSITION'][g])
                         and df['GENE'][s] == gt['GENE'][g]
                         and df['DNA_CHANGE'][s] == gt['DNA_CHANGE'][g]
                         and df['PROTEIN_CHANGE'][s] == gt['PROTEIN_CHANGE'][g]):
@@ -356,14 +381,6 @@ def combine(db_name, bed_file, samples_dir):
     # Add covered and reportable lists to DataFrame
     df['COVERED'] = covered_list
     df['REPORTABLE'] = reportables_list
-    false_negs = gt.iloc[[                                                            
-            i for i in range(0, gt.shape[0])                                    
-            if not (gt['GENE'][i] in df['GENE'].tolist()                        
-            and gt['DNA_CHANGE'][i] in df['DNA_CHANGE'].tolist()                
-            and gt['PROTEIN_CHANGE'][i] in df['PROTEIN_CHANGE'].tolist()        
-            and gt['SAMPLE_ID'][i] in df['SAMPLE_ID'].tolist())                 
-    ]].reset_index(drop=True)
-    print(false_negs)
     # Create parsed tab file
     df.to_csv(
             os.path.join(samples_dir, 'parsed.tab'), sep='\t',

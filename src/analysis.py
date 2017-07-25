@@ -27,14 +27,15 @@ def get_false_positives(df, caller):
     return df.iloc[[i for i, call in enumerate(df[caller]) if call == 'FP']].reset_index(drop=True)
 
 # Returns DataFrame from ground truth of variants not detected by caller
-def get_false_negatives(tp, gt):
-    return gt.iloc[[
-            i for i in range(0, gt.shape[0])
-            if not (gt['GENE'][i] in tp['GENE'].tolist()
-            and gt['DNA_CHANGE'][i] in tp['DNA_CHANGE'].tolist()
-            and gt['PROTEIN_CHANGE'][i] in tp['PROTEIN_CHANGE'].tolist()
-            and gt['SAMPLE_ID'][i] in tp['SAMPLE_ID'].tolist())
-    ]].reset_index(drop=True)
+def get_false_negatives(df, caller):
+#    return gt.iloc[[
+#            i for i in range(0, gt.shape[0])
+#            if not (gt['GENE'][i] in tp['GENE'].tolist()
+#            and gt['DNA_CHANGE'][i] in tp['DNA_CHANGE'].tolist()
+#            and gt['PROTEIN_CHANGE'][i] in tp['PROTEIN_CHANGE'].tolist()
+#            and gt['SAMPLE_ID'][i] in tp['SAMPLE_ID'].tolist())
+#    ]].reset_index(drop=True)
+    return df.iloc[[i for i, call in enumerate(df[caller]) if call == 'FN']].reset_index(drop=True)
 
 # Not covered, not reportable
 def get_unclassified(df, caller_name):
@@ -105,7 +106,7 @@ def analyze_callers(df, panel, gt):
         # True negatives in DataFrame
         tn_df = get_true_negatives(fp_df, caller, panel)
         # False negatives DataFrame
-        fn_df = get_false_negatives(tp_df, gt)
+        fn_df = get_false_negatives(df, caller)
 
         # Count rows in DataFrames
         tp = tp_df.shape[0]
