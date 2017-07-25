@@ -272,12 +272,6 @@ def combine(db_name, bed_file, samples_dir):
             if path in sample_paths
     ]].reset_index(drop=True)
     gt['SAMPLE_ID'] = [path.split(os.sep)[0] for path in gt['SAMPLE_PATH']]
-    test_row = pandas.DataFrame({
-            'CHROMOSOME':['chr0'], 'DNA_CHANGE':['c.00X>Y'], 'GENE':['TEST'],
-            'POSITION':[0], 'PROTEIN_CHANGE':['p.Tes00Est'], 'SAMPLE_NAME':[''],
-            'SAMPLE_PATH':[gt['SAMPLE_PATH'][0]], 'SAMPLE_ID':[gt['SAMPLE_ID'][0]]
-    })
-    gt = gt.append(test_row, ignore_index=True)
     # Output CSV
     gt.to_csv(
             os.path.join(gt_dir, 'ground_truth_small.csv'),
