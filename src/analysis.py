@@ -83,7 +83,7 @@ def get_true_negatives(fp, caller_name, panel):
     return all_positions
 
 # Returns DataFrame of analysis
-def analyze_callers(df, panel, gt):
+def analyze_callers(df, panel):
     # Initialize analysis DataFrame
     analysis_df = pandas.DataFrame({
             'ANALYSIS' : ['True Positives', 'True Negatives',

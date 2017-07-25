@@ -14,7 +14,7 @@ def replace_key(dictionary, new_key, old_key):
 
 # Get DataFrame of variants deemed "reportable" in final mongo database
 # Also outputs to ground_truth.csv
-def get_reportables(db_name, gt_dir):
+def get_reportables(db_name):
     # Get mongo database
     # Requires mongorestore to have been run
     client = pymongo.MongoClient()
@@ -73,17 +73,12 @@ def get_reportables(db_name, gt_dir):
             print('No torrent result for ' + str(final_doc['torrent_result_id']))
     # Generate combined DataFrame
     df = pandas.DataFrame(combined)
-    # Output to CSV
-#    df.to_csv(
-#            os.path.join(gt_dir, 'ground_truth.csv'),
-#            sep='\t', encoding='utf8', index=False
-#    )
     return df
 
 # Simplify reportable ground truth data to contain only relevant information
-# Also outputs to simple_ground_truth.csv
-def get_simplified_gt(db_name, gt_dir):
-    df = get_reportables(db_name, gt_dir)
+# Also outputs to ground_truth.csv
+def get_simplified_gt(db_name, output_dir):
+    df = get_reportables(db_name)
     print('Generating simplified data frame...')
     # Remove MiSeq entries
     df = df.iloc[[i for i, miseq in enumerate(df['miseq_run']) if not miseq]]    
@@ -169,9 +164,12 @@ def get_simplified_gt(db_name, gt_dir):
             i for i, dna in enumerate(simple_df['DNA_CHANGE']) 
             if not dna == '' and not simple_df['PROTEIN_CHANGE'][i] == ''
     ]].reset_index(drop=True)
+    simple_df['SAMPLE_ID'] = [
+            path.split(os.sep)[0] for path in simple_df['SAMPLE_PATH']
+    ]
     # Output CSV
     simple_df.to_csv(
-            os.path.join(gt_dir, 'ground_truth.csv'),
+            os.path.join(output_dir, 'ground_truth.csv'),
             sep='\t', encoding='utf8', index=False
     )
     return simple_df
@@ -223,8 +221,7 @@ def find_samples(gt, samples_dir):
             finals.append(os.path.join(*potential.split('/')))            
     return finals
 
-# Returns a list of DataFrames of samples for which matches exist in the ground
-# truth
+# Returns a DataFrames of sample for which matches exist in the ground truth
 def combine_samples(samples_dir, sample_paths):
     # List of sample DataFrames
     df_list = []
@@ -256,12 +253,17 @@ def combine_samples(samples_dir, sample_paths):
     return df
 
 def combine(db_name, bed_file, samples_dir):
-    gt_dir = os.path.join(sys.path[0], '..', 'data', 'ground_truth')
-    if os.path.isfile(os.path.join(gt_dir, 'ground_truth.csv')):
-        gt = pandas.read_csv(os.path.join(gt_dir, 'ground_truth.csv'), sep='\t')
+    # File system
+    main_dir = os.path.abspath(os.path.join(sys.path[0], '..'))
+    output_dir = os.path.join(main_dir, 'output')
+    gt_file = os.path.join(output_dir, 'ground_truth.csv')
+    # Get ground truth
+    if os.path.isfile(gt_file):
+        gt = pandas.read_csv(gt_file, sep='\t')
+        gt['SAMPLE_ID'] = gt['SAMPLE_ID'].astype(str)
     else:
         # Parse ground truth DataFrame from mongo database
-        gt = get_simplified_gt(db_name, gt_dir)
+        gt = get_simplified_gt(db_name, output_dir)
     # Parse .bed file
     bed = parse_bed(bed_file)
     # Find sample ID matches in the ground truth
@@ -271,12 +273,6 @@ def combine(db_name, bed_file, samples_dir):
             i for i, path in enumerate(gt['SAMPLE_PATH']) 
             if path in sample_paths
     ]].reset_index(drop=True)
-    gt['SAMPLE_ID'] = [path.split(os.sep)[0] for path in gt['SAMPLE_PATH']]
-    # Output CSV
-    gt.to_csv(
-            os.path.join(gt_dir, 'ground_truth_small.csv'),
-            sep='\t', encoding='utf8', index=False
-    )
     # Combine all sample DataFrames into one big DataFrame
     df = combine_samples(samples_dir, sample_paths).reset_index(drop=True)
     # List of variant caller names
@@ -296,7 +292,6 @@ def combine(db_name, bed_file, samples_dir):
         false_negs[caller] = ['./.'] * false_negs.shape[0]
     false_negs['TOTAL_CALLERS'] = [0] * false_negs.shape[0]
     df = df.append(false_negs, ignore_index=True)
-    print(false_negs)
 
     # List of variants covered by the small panel
     covered_list = df.shape[0] * [False]
@@ -377,10 +372,11 @@ def combine(db_name, bed_file, samples_dir):
     df['REPORTABLE'] = reportables_list
     # Create parsed tab file
     df.to_csv(
-            os.path.join(samples_dir, 'parsed.tab'), sep='\t',
+            os.path.join(output_dir, 'parsed.tab'), sep='\t',
             encoding='utf-8', index=False
     )
-    print('\nOutput to file ' + os.path.join(samples_dir, 'parsed.tab'))
+    print('\nOutput to file ' + os.path.join(output_dir, 'parsed.tab'))
+    return df
 
 if __name__ == "__main__":
     import argparse
