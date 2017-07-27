@@ -38,23 +38,17 @@ pandas.set_option('display.max_rows', 13)
 pandas.set_option('display.width', 300)
 
 # Generate combined callers
-callers = sample_parser.get_og_caller_names(df)
-if os.path.isfile(weights_file):
-    weights_df = pandas.read_csv(weights_file, sep='\t')
-    weights = weights_df['WEIGHT']
-else:
-    weights = analysis.generate_combined_caller_weights(df)
-    # weights_df = pandas.DataFrame({'CALLER': callers, 'WEIGHT': list(weights)})
-    # weights_df.to_csv(weights_file, sep='\t', encoding='utf-8', index=False)
+#if os.path.isfile(weights_file):
+#    weights_df = pandas.read_csv(weights_file, sep='\t')
+#    weights = weights_df['WEIGHT']
+#else:
+#    weights = analysis.generate_combined_caller_weights(df)
+#    # weights_df = pandas.DataFrame({'CALLER': callers, 'WEIGHT': list(weights)})
+#    # weights_df.to_csv(weights_file, sep='\t', encoding='utf-8', index=False)
 
-print(weights)
-# analysis.add_combined_caller(df, weights)
-# analysis.add_2_or_more(df)
-
-# analysis.add_differences(df)
-
+# print(weights)
 analysis_df = analysis.analyze_callers(df, panel)
-analysis.plot_callers(analysis_df)
+analysis.plot_callers(analysis_df, output_dir)
 analysis_file = os.path.join(output_dir, 'analysis.csv')
 try:
 #    df.to_csv(

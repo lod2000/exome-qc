@@ -244,7 +244,7 @@ def combine_samples(samples_dir, sample_paths):
                 'SNPEFF_ANNOTATED_GENE', 'SNPEFF_ANNOTATED_DNA_CHANGE',
                 'SNPEFF_ANNOTATED_PROTEIN_CHANGE', 'EXAC_FREQ_ESTIMATE',
                 # '1KG_FREQ_ESTIMATE', 
-                'TARGET_ALLELE_COUNT',
+                'TARGET_ALLELE_COUNT', 'TOTAL_READS'
         ] + caller_names
         # New sample DataFrame with relevant columns only
         altered_df = sample_df[col_list].rename(columns={
@@ -290,7 +290,7 @@ def combine(db_name, bed_file, samples_dir):
     df = combine_samples(samples_dir, sample_paths).reset_index(drop=True)
     print('Adding combined callers...')
     # Add x or more
-    # analysis.add_x_or_more(df)
+    analysis.add_x_or_more(df)
     # List of variant caller names
     callers = get_caller_names(df)
 

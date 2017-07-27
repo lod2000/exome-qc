@@ -1,4 +1,5 @@
 import math
+import os
 import re
 
 import pandas
@@ -11,10 +12,6 @@ import parser
 
 # Returns DataFrame of true positives (reportables)
 def get_true_positives(df, caller):
-#    return df.iloc[[
-#            i for i, reportable in enumerate(df['REPORTABLE'])
-#            if reportable and not df[caller_name][i] == './.'
-#    ]].reset_index(drop=True)
     return df.iloc[[
             i for i, call in enumerate(df[caller]) if call == 'TP'
     ]].reset_index(drop=True)
@@ -23,24 +20,12 @@ def get_true_positives(df, caller):
 # Sometimes a caller will find multiple mutations in the same location. These
 # are counted as separate false positives
 def get_false_positives(df, caller):
-#    return df.iloc[[
-#            i for i, covered in enumerate(df['COVERED'])
-#            if covered and not df['REPORTABLE'][i]
-#            and not df[caller][i] == './.'
-#    ]].reset_index(drop=True)
     return df.iloc[[
             i for i, call in enumerate(df[caller]) if call == 'FP'
     ]].reset_index(drop=True)
 
 # Returns DataFrame from ground truth of variants not detected by caller
 def get_false_negatives(df, caller):
-#    return gt.iloc[[
-#            i for i in range(0, gt.shape[0])
-#            if not (gt['GENE'][i] in tp['GENE'].tolist()
-#            and gt['DNA_CHANGE'][i] in tp['DNA_CHANGE'].tolist()
-#            and gt['PROTEIN_CHANGE'][i] in tp['PROTEIN_CHANGE'].tolist()
-#            and gt['SAMPLE_ID'][i] in tp['SAMPLE_ID'].tolist())
-#    ]].reset_index(drop=True)
     return df.iloc[[
             i for i, call in enumerate(df[caller]) if call == 'FN'
     ]].reset_index(drop=True)
@@ -51,11 +36,6 @@ def get_unclassified(df, caller_name):
             i for i, call in enumerate(df[caller])
             if call == 'UP' or call == 'UN'
     ]].reset_index(drop=True)
-#    return df.iloc[[
-#            i for i, cov in enumerate(df['COVERED'])
-#            if not cov and not df['REPORTABLE'][i]
-#            and not df[caller_name][i] == './.'
-#    ]].reset_index(drop=True)
 
 # Returns list of positions which were not called (correctly) and were covered
 # by the small panel
@@ -111,9 +91,8 @@ def analyze_callers(df, panel):
             'Accuracy', 'Matthews Correlation Coefficient']
     })
 
+    print('Analyzing callers...')
     for caller in parser.get_caller_names(df):
-        print('Analyzing calls by ' + caller)
-
         # True positives DataFrame
         tp_df = get_true_positives(df, caller)
         # False positives DataFrame
@@ -126,15 +105,9 @@ def analyze_callers(df, panel):
 
         # Count rows in DataFrames
         tp = tp_df.shape[0]
-        print(tp)
         tn = tn_df.shape[0]
-        print(tn)
         fp = fp_df.shape[0]
-        print(fp)
         fn = fn_df.shape[0]
-        print(fn)
-        print(str(tp + fn))
-        print(str(tn+fp))
 
         # Analysis
         tpr = tp / (tp + fn) # True positive rate (sensitivity)
@@ -254,7 +227,7 @@ def add_differences(df):
                     else './.' for i in range(0, df.shape[0])
             ]
 
-def plot_callers(analysis_df, combined=True):
+def plot_callers(analysis_df, plots_dir, combined=True):
     caller_pref = '^GT_'
     if combined:
         caller_pref = '^(GT_|COMB_)' 
@@ -287,4 +260,5 @@ def plot_callers(analysis_df, combined=True):
                 ha='right', 
                 va='bottom'
         )
+    pyplot.savefig(os.path.join(plots_dir, 'callers.pdf'), format='pdf')
     pyplot.show()
