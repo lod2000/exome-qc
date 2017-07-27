@@ -1,4 +1,5 @@
 import math
+import re
 
 import pandas
 import numpy
@@ -13,7 +14,9 @@ def get_true_positives(df, caller):
 #            i for i, reportable in enumerate(df['REPORTABLE'])
 #            if reportable and not df[caller_name][i] == './.'
 #    ]].reset_index(drop=True)
-    return df.iloc[[i for i, call in enumerate(df[caller]) if call == 'TP']].reset_index(drop=True)
+    return df.iloc[[
+            i for i, call in enumerate(df[caller]) if call == 'TP'
+    ]].reset_index(drop=True)
 
 # Covered, not reportable
 # Sometimes a caller will find multiple mutations in the same location. These
@@ -24,7 +27,9 @@ def get_false_positives(df, caller):
 #            if covered and not df['REPORTABLE'][i]
 #            and not df[caller][i] == './.'
 #    ]].reset_index(drop=True)
-    return df.iloc[[i for i, call in enumerate(df[caller]) if call == 'FP']].reset_index(drop=True)
+    return df.iloc[[
+            i for i, call in enumerate(df[caller]) if call == 'FP'
+    ]].reset_index(drop=True)
 
 # Returns DataFrame from ground truth of variants not detected by caller
 def get_false_negatives(df, caller):
@@ -35,52 +40,62 @@ def get_false_negatives(df, caller):
 #            and gt['PROTEIN_CHANGE'][i] in tp['PROTEIN_CHANGE'].tolist()
 #            and gt['SAMPLE_ID'][i] in tp['SAMPLE_ID'].tolist())
 #    ]].reset_index(drop=True)
-    return df.iloc[[i for i, call in enumerate(df[caller]) if call == 'FN']].reset_index(drop=True)
+    return df.iloc[[
+            i for i, call in enumerate(df[caller]) if call == 'FN'
+    ]].reset_index(drop=True)
 
 # Not covered, not reportable
 def get_unclassified(df, caller_name):
     return df.iloc[[
-            i for i, cov in enumerate(df['COVERED'])
-            if not cov and not df['REPORTABLE'][i]
-            and not df[caller_name][i] == './.'
+            i for i, call in enumerate(df[caller])
+            if call == 'UP' or call == 'UN'
     ]].reset_index(drop=True)
+#    return df.iloc[[
+#            i for i, cov in enumerate(df['COVERED'])
+#            if not cov and not df['REPORTABLE'][i]
+#            and not df[caller_name][i] == './.'
+#    ]].reset_index(drop=True)
 
 # Returns list of positions which were not called (correctly) and were covered
 # by the small panel
 # TODO speed up
-def get_true_negatives(fp, caller_name, panel):
-    positions = parser.split_panel(panel)
-    all_covered = fp.iloc[[
-            i for i, covered in enumerate(fp['COVERED'])
-            if covered and not fp[caller_name][i] == './.'
+#def get_true_negatives(fp, caller_name, panel):
+#    positions = parser.split_panel(panel)
+#    all_covered = fp.iloc[[
+#            i for i, covered in enumerate(fp['COVERED'])
+#            if covered and not fp[caller_name][i] == './.'
+#    ]].reset_index(drop=True)
+#    samples = list(set(fp['SAMPLE_ID']))
+#    # Each sample has the same covered positions
+#    all_positions = pandas.DataFrame(
+#            columns=['SAMPLE_ID', 'POSITION', 'CHROMOSOME', 'GENE']
+#    )
+#    for sample in samples:
+#        indices = []
+#        positions['SAMPLE_ID'] = [sample] * len(positions)
+#        covered = all_covered.iloc[[
+#                i for i, sample_id in enumerate(all_covered['SAMPLE_ID'])
+#                if sample_id == sample
+#        ]].reset_index(drop=True)
+#        called_positions = [
+#                i for i, pos in enumerate(positions['POSITION'])
+#                if pos in covered['POSITION'].tolist()
+#        ]
+#        for p in called_positions:
+#            for c in range(0, covered.shape[0]):
+#                if (positions['POSITION'][p] == covered['POSITION'][c]
+#                        and positions['GENE'][p] == covered['GENE'][c]
+#                        and positions['CHROMOSOME'][p] == covered['CHROMOSOME'][c]):
+#                    indices.append(p)
+#        all_positions = pandas.concat(
+#                [all_positions, positions.drop(positions.index[indices])],
+#                ignore_index=True
+#        )
+#    return all_positions
+def get_true_negatives(df, caller):
+    return df.iloc[[
+            i for i, call in enumerate(df[caller]) if call == 'TN'
     ]].reset_index(drop=True)
-    samples = list(set(fp['SAMPLE_ID']))
-    # Each sample has the same covered positions
-    all_positions = pandas.DataFrame(
-            columns=['SAMPLE_ID', 'POSITION', 'CHROMOSOME', 'GENE']
-    )
-    for sample in samples:
-        indices = []
-        positions['SAMPLE_ID'] = [sample] * len(positions)
-        covered = all_covered.iloc[[
-                i for i, sample_id in enumerate(all_covered['SAMPLE_ID'])
-                if sample_id == sample
-        ]].reset_index(drop=True)
-        called_positions = [
-                i for i, pos in enumerate(positions['POSITION'])
-                if pos in covered['POSITION'].tolist()
-        ]
-        for p in called_positions:
-            for c in range(0, covered.shape[0]):
-                if (positions['POSITION'][p] == covered['POSITION'][c]
-                        and positions['GENE'][p] == covered['GENE'][c]
-                        and positions['CHROMOSOME'][p] == covered['CHROMOSOME'][c]):
-                    indices.append(p)
-        all_positions = pandas.concat(
-                [all_positions, positions.drop(positions.index[indices])],
-                ignore_index=True
-        )
-    return all_positions
 
 # Returns DataFrame of analysis
 def analyze_callers(df, panel):
@@ -103,21 +118,22 @@ def analyze_callers(df, panel):
         # False positives DataFrame
         fp_df = get_false_positives(df, caller)
         # True negatives in DataFrame
-        tn_df = get_true_negatives(fp_df, caller, panel)
+#        tn_df = get_true_negatives(fp_df, caller, panel)
+        tn_df = get_true_negatives(df, caller)
         # False negatives DataFrame
         fn_df = get_false_negatives(df, caller)
 
         # Count rows in DataFrames
         tp = tp_df.shape[0]
-        # print(tp)
+        print(tp)
         tn = tn_df.shape[0]
-        # print(tn)
+        print(tn)
         fp = fp_df.shape[0]
-        # print(fp)
+        print(fp)
         fn = fn_df.shape[0]
-        # print(fn)
-        # print(str(tp + fn))
-        # print(str(tn+fp))
+        print(fn)
+        print(str(tp + fn))
+        print(str(tn+fp))
 
         # Analysis
         tpr = tp / (tp + fn) # True positive rate (sensitivity)
@@ -176,16 +192,16 @@ def add_combined_caller(df, weights):
             True if status >= 0.009 else './.' for status in df['COMBINED_STATUS']
     ]
 
-# def add_x_or_more(df):
-#     for cutoff in range(2, len(parser.get_og_caller_names(df)) + 1):
-#         name = 'COMB_' + str(cutoff) + '_OR_MORE'
-#         df[name] = [
-#                 True if callers >= cutoff else './.'
-#                 for callers in df['TOTAL_CALLERS']
-#         ]
+def add_x_or_more(df):
+    for cutoff in range(2, len(parser.get_og_caller_names(df))):
+        name = 'COMB_' + str(cutoff) + 'ORMORE'
+        df[name] = [
+                True if callers >= cutoff else './.'
+                for callers in df['TOTAL_CALLERS']
+        ]
 
 def add_2_or_more(df):
-    name = 'COMB_2_OR_MORE'
+    name = 'COMB_2ORMORE'
     df[name] = [
             True if callers >= 2 else './.' for callers in df['TOTAL_CALLERS']
     ]
@@ -207,8 +223,12 @@ def add_differences(df):
                     else './.' for i in range(0, df.shape[0])
             ]
 
-def plot_callers(analysis_df):
-    callers = [c.split('_')[-1] for c in list(analysis_df.columns)[1:]]
+def plot_callers(analysis_df, combined=True):
+    caller_pref = '^GT_'
+    if combined:
+        caller_pref = '^(GT_|COMB_)' 
+    r = re.compile(caller_pref)
+    callers = [c.split('_')[-1] for c in filter(r.match, list(analysis_df))]
     at = analysis_df.transpose().reset_index()
     at.rename(columns = at.iloc[0], inplace=True)
     at = at[1:].reset_index(drop=True)
