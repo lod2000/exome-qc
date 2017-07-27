@@ -250,6 +250,7 @@ def combine_samples(samples_dir, sample_paths):
         })
         # Add SAMPLE_ID column (for when this DataFrame will be merged with others)
         altered_df['SAMPLE_ID'] = sample_df.shape[0] * [sample_id]
+        altered_df['SAMPLE_PATH'] = sample_df.shape[0] * [sample_path]
         # Add sample DataFrame to list
         df_list.append(altered_df.reset_index(drop=True))
     df = pandas.concat(df_list).reset_index(drop=True)
@@ -288,27 +289,29 @@ def combine(db_name, bed_file, samples_dir):
     # List of variant caller names
     callers = get_caller_names(df)
     # Clean up ground truth
-    del gt['SAMPLE_PATH']
+    # del gt['SAMPLE_PATH']
     del gt['SAMPLE_NAME']
     # Find variants in gt not found by any caller
     print('Finding false negatives...')
     # false_negs = gt[~gt.isin(df)].dropna()
-    true_pos = gt.merge(df, on=['SAMPLE_ID', 'CHROMOSOME', 'POSITION', 'GENE',
-            'DNA_CHANGE', 'PROTEIN_CHANGE'], how='left', indicator=True)
-    false_negs = true_pos.query('_merge == "left_only"').dropna(axis=1)
-    true_pos = true_pos.query('_merge == "both"').dropna(axis=1)
-#    false_negs = gt.iloc[[                                                            
-#            i for i in range(0, gt.shape[0])                                    
-#            if not (gt['GENE'][i] in df['GENE'].tolist()                        
-#            and gt['DNA_CHANGE'][i] in df['DNA_CHANGE'].tolist()                
-#            and gt['PROTEIN_CHANGE'][i] in df['PROTEIN_CHANGE'].tolist()        
-#    ]].reset_index(drop=True)
+    merge_list = [
+            'SAMPLE_PATH', 'CHROMOSOME', 'POSITION', 'GENE', 'DNA_CHANGE',
+            'PROTEIN_CHANGE', 'SAMPLE_ID'
+    ]
+    false_negs = gt.merge(df, on=merge_list, how='left', indicator=True)
+    false_negs = false_negs.query('_merge == "left_only"').dropna(axis=1)
     for caller in callers:
         false_negs[caller] = ['./.'] * false_negs.shape[0]
     false_negs['TOTAL_CALLERS'] = [0] * false_negs.shape[0]
     del false_negs['_merge']
-    print(false_negs)
+    false_negs.rename(columns={
+            'EXAC_FREQ_ESTIMATE_x': 'EXAC_FREQ_ESTIMATE',
+            'TARGET_ALLELE_COUNT_x': 'TARGET_ALLELE_COUNT'
+    })
     df = df.append(false_negs, ignore_index=True)
+    true_pos = df.merge(gt, on=merge_list, how='left', indicator=True)
+    true_pos = true_pos.query('_merge == "both"').dropna(axis=1)
+    del true_pos['_merge']
 
     # List of variants covered by the small panel
     covered_list = df.shape[0] * [False]
