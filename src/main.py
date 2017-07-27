@@ -54,7 +54,7 @@ print(weights)
 # analysis.add_differences(df)
 
 analysis_df = analysis.analyze_callers(df, panel)
-# analysis.plot_callers(analysis_df)
+analysis.plot_callers(analysis_df)
 analysis_file = os.path.join(output_dir, 'analysis.csv')
 try:
 #    df.to_csv(
