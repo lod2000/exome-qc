@@ -216,7 +216,11 @@ def get_caller_names(sample):
 # Returns list of sample paths from ground truth that are in data/samples
 def find_samples(gt, samples_dir):
     samples = next(os.walk(samples_dir))[1]
-    potentials = set(gt['SAMPLE_PATH'])
+    potentials = [
+            path for i, path in enumerate(gt['SAMPLE_PATH'])
+            if path not in list(gt['SAMPLE_PATH'][:i])
+    ]
+    #potentials = set(gt['SAMPLE_PATH'])
     finals = []
     for potential in potentials:
         if os.path.isfile(os.path.join(samples_dir, str(potential))):
@@ -261,6 +265,7 @@ def combine(db_name, bed_file, samples_dir):
     main_dir = os.path.abspath(os.path.join(sys.path[0], '..'))
     output_dir = os.path.join(main_dir, 'output')
     gt_file = os.path.join(output_dir, 'ground_truth.csv')
+
     # Get ground truth
     if os.path.isfile(gt_file):
         print('Reading ground truth file...')
@@ -279,6 +284,7 @@ def combine(db_name, bed_file, samples_dir):
             i for i, path in enumerate(gt['SAMPLE_PATH']) 
             if path in sample_paths
     ]].reset_index(drop=True)
+    del gt['SAMPLE_NAME']
     print(gt.shape[0])
     print('Combining samples...')
     # Combine all sample DataFrames into one big DataFrame
@@ -288,12 +294,9 @@ def combine(db_name, bed_file, samples_dir):
     # analysis.add_x_or_more(df)
     # List of variant caller names
     callers = get_caller_names(df)
-    # Clean up ground truth
-    # del gt['SAMPLE_PATH']
-    del gt['SAMPLE_NAME']
+
     # Find variants in gt not found by any caller
     print('Finding false negatives...')
-    # false_negs = gt[~gt.isin(df)].dropna()
     merge_list = [
             'SAMPLE_PATH', 'CHROMOSOME', 'POSITION', 'GENE', 'DNA_CHANGE',
             'PROTEIN_CHANGE', 'SAMPLE_ID'
@@ -309,113 +312,37 @@ def combine(db_name, bed_file, samples_dir):
             'TARGET_ALLELE_COUNT_x': 'TARGET_ALLELE_COUNT'
     }, inplace=True)
     df = df.append(false_negs, ignore_index=True)
+
+    # Find variants that are also present in ground truth
+    print('Generating reportables...')
     true_pos = df.merge(gt, on=merge_list, how='left', indicator=True)
     true_pos = true_pos.query('_merge == "both"').dropna(axis=1)
     del true_pos['_merge']
+    df['REPORTABLE'] = [(i in true_pos.index) for i in range(0, df.shape[0])] 
 
+    # Find positions that are covered by the small panel
     print('Splitting panel file...')
     panel = split_panel(bed)
     covered = df.merge(panel, on=['GENE','CHROMOSOME','POSITION'], how='left',
             indicator=True).query('_merge == "both"')
-
-    # List of variants covered by the small panel
-    covered_list = df.shape[0] * [False]
-    # List of variants reported in the ground truth
-    reportables_list = df.shape[0] * [False]
-
-    # Set up progress indicator
-#    sys.stdout.write('Generating combined DataFrame:  0%')
-#    sys.stdout.flush()
-#    print('Generating combined data frame...')
-
-    # Cycle through every variant
-#    for s in range(0, df.shape[0]):
-        # Progress indicator
-#        progress = int(100 * (s / df.shape[0]))
-#        if progress < 10:
-#            sys.stdout.write('\b\b' + str(progress) + '%')
-#        else:
-#            sys.stdout.write('\b\b\b' + str(progress) + '%')
-#        sys.stdout.flush()
-
-        # Find variants covered by the small panel
-        # If the gene is covered by the small panel
-#        if df['GENE'][s] in set(bed['GENE']):
-#            covered_genes = [
-#                    x for x, gene in enumerate(bed['GENE'])
-#                    if gene == df['GENE'][s]
-#            ]
-#            # List of possible locations in small panel coverage file
-#            for n in covered_genes:
-#                # If variant position is in a location covered by the small panel
-#                if (df['CHROMOSOME'][s] == bed['CHROMOSOME'][n]
-#                        and int(df['POSITION'][s]) >= bed['START'][n]
-#                        and int(df['POSITION'][s]) <= bed['END'][n]):
-#                # if (df['CHROMOSOME'][s] == bed['CHROMOSOME'][n]
-#                #         and int(df['POSITION'][s]) == bed['POSITION'][n]):
-#                    covered_list[s] = True
-
-        # Find variants reported in the ground truth
-        # This if statement weeds out unnecessary checks
-#        if (df['GENE'][s] in gt['GENE'].tolist()
-#                and df['DNA_CHANGE'][s] in gt['DNA_CHANGE'].tolist()
-#                and df['PROTEIN_CHANGE'][s] in gt['PROTEIN_CHANGE'].tolist()):
-#            # Cycle through variants in ground truth
-#            for g in range(0, gt.shape[0]):
-#                # If the variant info matches between the DataFrame and ground truth
-#                if (df['SAMPLE_ID'][s] == gt['SAMPLE_ID'][g]
-#                        and int(df['POSITION'][s]) == int(gt['POSITION'][g])
-#                        and df['GENE'][s] == gt['GENE'][g]
-#                        and df['DNA_CHANGE'][s] == gt['DNA_CHANGE'][g]
-#                        and df['PROTEIN_CHANGE'][s] == gt['PROTEIN_CHANGE'][g]):
-#                    reportables_list[s] = True
-        
-        # Find true positives, etc.
-#        for caller in callers:
-#            call = ''
-#            if reportables_list[s]:
-#                if df[caller][s] == './.':
-#                    call = 'FN' # false negative
-#                else:
-#                    call = 'TP' # true positive
-#            elif covered_list[s]:
-#                if df[caller][s] == './.':
-#                    call = 'TN' # true negative
-#                else:
-#                    call = 'FP' # false positive
-#            else:
-#                if df[caller][s] == './.':
-#                    call = 'UN' # unclassified negative
-#                else:
-#                    call = 'UP' # unclassified positive
-#            df.set_value(s, caller, call)
-
-#    sys.stdout.write('\b\b\b100%')
-#    sys.stdout.flush
-
-    # Add covered and reportable lists to DataFrame
-#    df['COVERED'] = covered_list
-#    df['REPORTABLE'] = reportables_list
-    print('Generating reportables...')
-    df['REPORTABLE'] = [(i in true_pos.index) for i in range(0, df.shape[0])] 
     df['COVERED'] = [(i in covered.index) for i in range(0, df.shape[0])]
+
+    # Classify calls (TP, FN, etc.)
     print('Classifying calls...')
     for caller in callers:
         print(caller)
-        print('np')
         np = ['N' if call == './.' else 'P' for call in df[caller]]
-        print('tf')
-        tf = [False if call == './.' else True for call in df[caller]]
-        print('calls')
-        calls = [str(tf[i] == df['REPORTABLE'][i])[0] + np[i] for i in range(0, df.shape[0])]
-        print('adding to df')
-        df[caller] = calls
+        df[caller] = [
+                str((np[i] == 'P') == df['REPORTABLE'][i])[0] + np[i] 
+                for i in range(0, df.shape[0])
+        ]
+
     # Create parsed tab file
     df.to_csv(
             os.path.join(output_dir, 'parsed.tab'), sep='\t',
             encoding='utf-8', index=False
     )
-    print('\nOutput to file ' + os.path.join(output_dir, 'parsed.tab'))
+    print('Output to file ' + os.path.join(output_dir, 'parsed.tab'))
     return df
 
 if __name__ == "__main__":
