@@ -157,7 +157,7 @@ def get_simplified_gt(db_name, output_dir):
             'SAMPLE_PATH': ppmp_annotation_paths,
             'TARGET_ALLELE_COUNT': target_allele_counts,
             'EXAC_FREQ_ESTIMATE': exac_freq_estimates,
-            '1KG_FREQ_ESTIMATE': nkg_freq_estimates
+            # '1KG_FREQ_ESTIMATE': nkg_freq_estimates
     })
     # Strip out variants without DNA or protein information
     simple_df = simple_df.iloc[[
@@ -237,7 +237,8 @@ def combine_samples(samples_dir, sample_paths):
                 'CHROMOSOME', 'POSITION', 'TOTAL_CALLERS',
                 'SNPEFF_ANNOTATED_GENE', 'SNPEFF_ANNOTATED_DNA_CHANGE',
                 'SNPEFF_ANNOTATED_PROTEIN_CHANGE', 'EXAC_FREQ_ESTIMATE',
-                '1KG_FREQ_ESTIMATE', 'TARGET_ALLELE_COUNT',
+                # '1KG_FREQ_ESTIMATE', 
+                'TARGET_ALLELE_COUNT',
         ] + caller_names
         # New sample DataFrame with relevant columns only
         altered_df = sample_df[col_list].rename(columns={
