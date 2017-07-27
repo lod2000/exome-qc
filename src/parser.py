@@ -307,11 +307,16 @@ def combine(db_name, bed_file, samples_dir):
     false_negs.rename(columns={
             'EXAC_FREQ_ESTIMATE_x': 'EXAC_FREQ_ESTIMATE',
             'TARGET_ALLELE_COUNT_x': 'TARGET_ALLELE_COUNT'
-    })
+    }, inplace=True)
     df = df.append(false_negs, ignore_index=True)
     true_pos = df.merge(gt, on=merge_list, how='left', indicator=True)
     true_pos = true_pos.query('_merge == "both"').dropna(axis=1)
     del true_pos['_merge']
+
+    print('Splitting panel file...')
+    panel = split_panel(bed)
+    covered = df.merge(panel, on=['GENE','CHROMOSOME','POSITION'], how='left',
+            indicator=True).query('_merge == "both"')
 
     # List of variants covered by the small panel
     covered_list = df.shape[0] * [False]
@@ -321,7 +326,7 @@ def combine(db_name, bed_file, samples_dir):
     # Set up progress indicator
 #    sys.stdout.write('Generating combined DataFrame:  0%')
 #    sys.stdout.flush()
-    print('Generating combined data frame...')
+#    print('Generating combined data frame...')
 
     # Cycle through every variant
 #    for s in range(0, df.shape[0]):
@@ -389,10 +394,11 @@ def combine(db_name, bed_file, samples_dir):
 #    sys.stdout.flush
 
     # Add covered and reportable lists to DataFrame
-    df['COVERED'] = covered_list
+#    df['COVERED'] = covered_list
 #    df['REPORTABLE'] = reportables_list
     print('Generating reportables...')
     df['REPORTABLE'] = [(i in true_pos.index) for i in range(0, df.shape[0])] 
+    df['COVERED'] = [(i in covered.index) for i in range(0, df.shape[0])]
     print('Classifying calls...')
     for caller in callers:
         print(caller)
