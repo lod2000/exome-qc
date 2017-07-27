@@ -285,7 +285,6 @@ def combine(db_name, bed_file, samples_dir):
             if path in sample_paths
     ]].reset_index(drop=True)
     del gt['SAMPLE_NAME']
-    print(gt.shape[0])
     print('Combining samples...')
     # Combine all sample DataFrames into one big DataFrame
     df = combine_samples(samples_dir, sample_paths).reset_index(drop=True)
@@ -334,6 +333,7 @@ def combine(db_name, bed_file, samples_dir):
         np = ['N' if call == './.' else 'P' for call in df[caller]]
         df[caller] = [
                 str((np[i] == 'P') == df['REPORTABLE'][i])[0] + np[i] 
+                if df['COVERED'][i] else 'U' + np[i]
                 for i in range(0, df.shape[0])
         ]
 
