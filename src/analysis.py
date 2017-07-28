@@ -1,4 +1,5 @@
 import math
+import itertools
 import os
 import re
 
@@ -78,6 +79,45 @@ def get_true_negatives(df, caller):
             i for i, call in enumerate(df[caller]) if call == 'TN'
     ]].reset_index(drop=True)
 
+def comb_callers(df, select_callers):
+    all_callers = parser.get_og_caller_names(df)
+    tps = df
+    fps = df
+    for caller in all_callers:
+        if caller in select_callers:
+            tps = get_true_positives(tps, caller)
+            fps = get_false_positives(fps, caller)
+        else:
+            tps = get_false_negatives(tps, caller)
+            fps = get_true_negatives(fps, caller)
+    return {'TP': tps.shape[0], 'FP': fps.shape[0]}
+
+def p_real_given_called(tp, fp, reportables, covered):
+    p_called_given_real = tp / reportables
+    p_real = reportables / covered
+    p_called = (tp + fp) / covered
+    p_real_given_called = p_called_given_real * p_real / p_called
+    return p_real_given_called
+
+def get_caller_comb_probs(df):
+    reportables = len([rep for rep in df['REPORTABLE'] if rep])
+    covered = len([
+            i for i in range(0, df.shape[0])
+            if df['REPORTABLE'][i] or df['COVERED'][i]
+    ])
+    callers = parser.get_og_caller_names(df)
+    weights = {}
+    for k in range(1, len(callers) + 1):
+        for subset in itertools.combinations(callers, k):
+            sublist = list(subset)
+            comb = comb_callers(df, sublist)
+            called = comb['TP'] + comb['FP']
+            if called > 0:
+                weights['&'.join(sublist)] = p_real_given_called(
+                        comb['TP'], comb['FP'], reportables, covered
+                )
+    return weights
+
 # Returns DataFrame of analysis
 def analyze_callers(df, panel):
     # Initialize analysis DataFrame
@@ -92,7 +132,10 @@ def analyze_callers(df, panel):
     })
 
     print('Analyzing callers...')
-    for caller in parser.get_caller_names(df):
+    callers = parser.get_caller_names(df)
+    weights = pandas.DataFrame(columns=['WEIGHT'], index=callers)
+    print(get_caller_comb_probs(df))
+    for caller in callers:
         # True positives DataFrame
         tp_df = get_true_positives(df, caller)
         # False positives DataFrame
@@ -127,8 +170,17 @@ def analyze_callers(df, panel):
                 tp, tn, fp, fn, tpr, tnr, ppv, npv, fnr, fpr, fdr, fom, acc, mcc
         ]
 
+        # Weight
+        all_calls = tp + fp + tn + fn
+        #p_called_given_real = tpr
+        #p_real = (tp + fn) / all_calls
+        #p_called = (tp + fp) / all_calls
+        #p_real_given_called = p_called_given_real * p_real / p_called
+        weights['WEIGHT'][caller] = p_real_given_called(tp, fp, tp + fn, all_calls)
+
     return analysis_df
 
+            
 def f(weight, caller, df):
     weighted_sum = 0
     for i in range(0, df.shape[0]):
