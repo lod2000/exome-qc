@@ -209,6 +209,10 @@ def get_og_caller_names(sample):
     headers = list(sample)
     return [h for h in headers if re.search('^GT_', h)]
 
+def get_new_caller_names(df):
+    headers = list(df)
+    return [h for h in headers if re.search('^COMB_', h)]
+
 def get_caller_names(sample):
     headers = list(sample)
     return [h for h in headers if re.search('^GT_', h) or re.search('^COMB_', h)]
@@ -260,6 +264,16 @@ def combine_samples(samples_dir, sample_paths):
     df = pandas.concat(df_list).reset_index(drop=True)
     return df
 
+def classify(df, callers):
+    for caller in callers:
+        print(caller)
+        np = ['N' if call == './.' else 'P' for call in df[caller]]
+        df[caller] = [
+                str((np[i] == 'P') == df['REPORTABLE'][i])[0] + np[i] 
+                if (df['COVERED'][i] or df['REPORTABLE'][i]) else 'U' + np[i]
+                for i in range(0, df.shape[0])
+        ]
+
 def combine(db_name, bed_file, samples_dir):
     # File system
     main_dir = os.path.abspath(os.path.join(sys.path[0], '..'))
@@ -289,10 +303,8 @@ def combine(db_name, bed_file, samples_dir):
     # Combine all sample DataFrames into one big DataFrame
     df = combine_samples(samples_dir, sample_paths).reset_index(drop=True)
     print('Adding combined callers...')
-    # Add x or more
-    analysis.add_x_or_more(df)
     # List of variant caller names
-    callers = get_caller_names(df)
+    callers = get_og_caller_names(df)
 
     # Find variants in gt not found by any caller
     print('Finding false negatives...')
@@ -327,16 +339,22 @@ def combine(db_name, bed_file, samples_dir):
     )
     df['COVERED'] = [(i in covered.index) for i in range(0, df.shape[0])]
 
+    # Add x or more
+    print('Adding combined callers...')
+    #analysis.add_x_or_more(df)
+    callers = get_caller_names(df)
+
     # Classify calls (TP, FN, etc.)
     print('Classifying calls...')
-    for caller in callers:
-        print(caller)
-        np = ['N' if call == './.' else 'P' for call in df[caller]]
-        df[caller] = [
-                str((np[i] == 'P') == df['REPORTABLE'][i])[0] + np[i] 
-                if (df['COVERED'][i] or df['REPORTABLE'][i]) else 'U' + np[i]
-                for i in range(0, df.shape[0])
-        ]
+    classify(df, get_og_caller_names(df))
+    #for caller in callers:
+    #    print(caller)
+    #    np = ['N' if call == './.' else 'P' for call in df[caller]]
+    #    df[caller] = [
+    #            str((np[i] == 'P') == df['REPORTABLE'][i])[0] + np[i] 
+    #            if (df['COVERED'][i] or df['REPORTABLE'][i]) else 'U' + np[i]
+    #            for i in range(0, df.shape[0])
+    #    ]
 
     # Create parsed tab file
     df.to_csv(

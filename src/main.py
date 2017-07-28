@@ -22,6 +22,7 @@ weights_file = os.path.join(output_dir, 'weights.tab')
 
 # Generate combined data file
 if os.path.isfile(df_file):
+    print('Reading parsed samples file...')
     # Read parsed CSV
     df = pandas.read_csv(df_file, sep='\t', low_memory=False)
     # Convert SAMPLE_IDs to Strings
@@ -45,6 +46,17 @@ pandas.set_option('display.width', 300)
 #    weights = analysis.generate_combined_caller_weights(df)
 #    # weights_df = pandas.DataFrame({'CALLER': callers, 'WEIGHT': list(weights)})
 #    # weights_df.to_csv(weights_file, sep='\t', encoding='utf-8', index=False)
+print('Adding combined callers...')
+analysis.add_x_or_more(df)
+analysis.add_prob_caller(df)
+analysis.add_weight_caller(df)
+print('Classifying combined calls...')
+parser.classify(df, parser.get_new_caller_names(df))
+print('Creating new tab file...')
+df.to_csv(
+        os.path.join(output_dir, 'parsed_combined.tab'), sep='\t', 
+        encoding='utf-8', index=False
+)
 
 # print(weights)
 analysis_df = analysis.analyze_callers(df, panel)

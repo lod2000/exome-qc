@@ -116,7 +116,44 @@ def get_caller_comb_probs(df):
                 weights['&'.join(sublist)] = p_real_given_called(
                         comb['TP'], comb['FP'], reportables, covered
                 )
+            else:
+                weights['&'.join(sublist)] = 0.0
+    weights[''] = 0.0
     return weights
+
+def add_prob_caller(df):
+    cutoff = 0.3
+    callers = parser.get_og_caller_names(df)
+    probs = get_caller_comb_probs(df)
+    df['COMB_PROB'] = [
+            True if probs['&'.join([c for c in callers if not df[c][i][1] == 'P'])] > 0.3
+            else './.' for i in range(0, df.shape[0])
+    ]
+
+def get_caller_weights(df):
+    callers = parser.get_og_caller_names(df)
+    weights = []
+    for caller in callers:
+        tp = get_true_positives(df, caller).shape[0]
+        fp = get_false_positives(df, caller).shape[0]
+        tn = get_true_negatives(df, caller).shape[0]
+        fn = get_false_negatives(df, caller).shape[0]
+        all_calls = tp + fp + tn + fn
+        weights.append(p_real_given_called(tp, fp, tp + fn, all_calls))
+    return weights
+
+def weight_fn(cutoff, df):
+    weights = get_caller_weights(df)
+
+def add_weight_caller(df):
+    weights = get_caller_weights(df)
+    cutoff = 0.3
+    df['COMB_WEIGHT' + str(cutoff)[-1]] = [
+            True if sum([
+                    weight for k, weight in enumerate(weights) 
+                    if df[callers[k]][i][1] == 'P'
+            ]) > cutoff else './.' for i in range(0, df.shape[0])
+    ]
 
 # Returns DataFrame of analysis
 def analyze_callers(df, panel):
@@ -133,8 +170,6 @@ def analyze_callers(df, panel):
 
     print('Analyzing callers...')
     callers = parser.get_caller_names(df)
-    weights = pandas.DataFrame(columns=['WEIGHT'], index=callers)
-    print(get_caller_comb_probs(df))
     for caller in callers:
         # True positives DataFrame
         tp_df = get_true_positives(df, caller)
@@ -169,17 +204,7 @@ def analyze_callers(df, panel):
         analysis_df[caller] = [
                 tp, tn, fp, fn, tpr, tnr, ppv, npv, fnr, fpr, fdr, fom, acc, mcc
         ]
-
-        # Weight
-        all_calls = tp + fp + tn + fn
-        #p_called_given_real = tpr
-        #p_real = (tp + fn) / all_calls
-        #p_called = (tp + fp) / all_calls
-        #p_real_given_called = p_called_given_real * p_real / p_called
-        weights['WEIGHT'][caller] = p_real_given_called(tp, fp, tp + fn, all_calls)
-
     return analysis_df
-
             
 def f(weight, caller, df):
     weighted_sum = 0
