@@ -8,6 +8,7 @@ import numpy
 from scipy.optimize import fmin
 from scipy.optimize import minimize
 import matplotlib.pyplot as pyplot
+from adjustText import adjust_text
 
 import parser
 
@@ -121,12 +122,32 @@ def get_caller_comb_probs(df):
     weights[''] = 0.0
     return weights
 
-def add_prob_caller(df):
-    cutoff = 0.3
+def prob_fn(cutoffs, df):
     callers = parser.get_og_caller_names(df)
     probs = get_caller_comb_probs(df)
+    nps = [[
+            'P'
+            if probs['&'.join([c for c in callers if df[c][i][1] == 'P'])] > cutoff
+            else 'N' for i in range(0, df.shape[0])
+    ] for cutoff in cutoffs]
+    statuses = [[
+            str((np[i] == 'P') == df['REPORTABLE'][i])[0] + np[i]
+            for i in range(0, df.shape[0])
+    ] for np in nps]
+    tp = [len([s for s in status if s == 'TP']) for status in statuses]
+    fp = [len([s for s in status if s == 'FP']) for status in statuses]
+    return {'TP': tp, 'FP': fp}
+
+def add_prob_caller(df):
+    print('adding prob caller')
+    cutoff = 0.3
+    callers = parser.get_og_caller_names(df)
+    print('getting probs')
+    probs = get_caller_comb_probs(df)
+    print('adding column')
     df['COMB_PROB'] = [
-            True if probs['&'.join([c for c in callers if df[c][i][1] == 'P'])] > 0.3
+            True 
+            if probs['&'.join([c for c in callers if df[c][i][1] == 'P'])] > 0.3
             else './.' for i in range(0, df.shape[0])
     ]
 
@@ -142,8 +163,21 @@ def get_caller_weights(df):
         weights.append(p_real_given_called(tp, fp, tp + fn, all_calls))
     return weights
 
-def weight_fn(cutoff, df):
-    weights = get_caller_weights(df)
+def weight_fn(cutoffs, cov, weights):
+    callers = parser.get_og_caller_names(cov)
+    nps = [[
+            'P' if sum([
+                    weight for k, weight in enumerate(weights) 
+                    if cov[callers[k]][i][1] == 'P'
+            ]) > cutoff else 'N' for i in range(0, cov.shape[0])
+    ] for cutoff in cutoffs]
+    statuses = [[
+            str((np[i] == 'P') == cov['REPORTABLE'][i])[0] + np[i]
+            for i in range(0, cov.shape[0])
+    ] for np in nps]
+    tp = [len([s for s in status if s == 'TP']) for status in statuses]
+    fp = [len([s for s in status if s == 'FP']) for status in statuses]
+    return {'TP': tp, 'FP': fp}
 
 def add_weight_caller(df):
     weights = get_caller_weights(df)
@@ -205,6 +239,7 @@ def analyze_callers(df, panel):
         analysis_df[caller] = [
                 tp, tn, fp, fn, tpr, tnr, ppv, npv, fnr, fpr, fdr, fom, acc, mcc
         ]
+    
     return analysis_df
             
 def f(weight, caller, df):
@@ -305,7 +340,7 @@ def add_differences(df):
                     else './.' for i in range(0, df.shape[0])
             ]
 
-def plot_callers(analysis_df, plots_dir, combined=True):
+def plot_callers(df, analysis_df, plots_dir, combined=True):
     caller_pref = '^GT_'
     if combined:
         caller_pref = '^(GT_|COMB_)' 
@@ -314,29 +349,61 @@ def plot_callers(analysis_df, plots_dir, combined=True):
     at = analysis_df.transpose().reset_index()
     at.rename(columns = at.iloc[0], inplace=True)
     at = at[1:].reset_index(drop=True)
+    at_gt = at.iloc[[
+            i for i, caller in enumerate(at['ANALYSIS']) 
+            if re.search('GT_', caller)
+    ]] 
+    at_ormore = at.iloc[[i for i, caller in enumerate(at['ANALYSIS']) if re.search('ORMORE', caller)]]
+    at_other = at.iloc[[i for i, caller in enumerate(at['ANALYSIS']) if re.search('COMB_[A-Z]', caller)]]
+
+    weights = get_caller_weights(df)
+    cov = df.iloc[[
+            i for i in range(0, df.shape[0])
+            if df['COVERED'][i] or df['REPORTABLE'][i]
+    ]].reset_index(drop=True)
+    c = numpy.arange(0, sum(weights), 0.1)
+    c2 = numpy.arange(0, 1, 0.01)
+    f = weight_fn(c, cov, weights)
+    f2 = prob_fn(c2, cov)
+    pyplot.plot(f['FP'], f['TP'], '--')
+    pyplot.plot(f2['FP'], f2['TP'])
 
     # Create scatter plot
     pyplot.scatter(
-            at['False Positives'], 
-            at['True Positives'], 
+            at_gt['False Positives'], 
+            at_gt['True Positives'], 
             marker='o', 
     )
+    pyplot.scatter(
+            at_ormore['False Positives'],
+            at_ormore['True Positives'],
+            marker='^'
+    )
+    pyplot.scatter(
+            at_other['False Positives'],
+            at_other['True Positives'],
+            marker='*'
+    )
     # Plot labels
-    pyplot.ylim(ymin=0)
-    pyplot.xlim(xmin=0)
+    pyplot.xlim(xmin=300, xmax=420)
+    pyplot.ylim(ymin=100, ymax=300)
+    #pyplot.ylim(ymin=0)
+    #pyplot.xlim(xmin=0)
     pyplot.title('Mutation caller positive hits')
     pyplot.ylabel('True positives')
     pyplot.xlabel('False positives')
     # Point labels
-    for caller, x, y in zip(
-            callers, at['False Positives'], at['True Positives']
+    annotations = []
+    for x, y, caller in zip(
+            at['False Positives'], at['True Positives'], callers
     ):
-        pyplot.annotate(
-                caller, xy=(x, y), 
-                xytext=(-10, -10), 
-                textcoords='offset points', 
-                ha='right', 
-                va='bottom'
-        )
+        annotations.append(pyplot.text(x, y, caller))
+        #        caller, xy=(x, y), 
+        #        xytext=(-10, -10), 
+        #        textcoords='offset points', 
+        #        ha='right', 
+        #        va='bottom',
+        #))
+    adjust_text(annotations)
     pyplot.savefig(os.path.join(plots_dir, 'callers.pdf'), format='pdf')
     pyplot.show()
