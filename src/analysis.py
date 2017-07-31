@@ -126,7 +126,7 @@ def add_prob_caller(df):
     callers = parser.get_og_caller_names(df)
     probs = get_caller_comb_probs(df)
     df['COMB_PROB'] = [
-            True if probs['&'.join([c for c in callers if not df[c][i][1] == 'P'])] > 0.3
+            True if probs['&'.join([c for c in callers if df[c][i][1] == 'P'])] > 0.3
             else './.' for i in range(0, df.shape[0])
     ]
 
@@ -147,6 +147,7 @@ def weight_fn(cutoff, df):
 
 def add_weight_caller(df):
     weights = get_caller_weights(df)
+    callers = parser.get_og_caller_names(df)
     cutoff = 0.3
     df['COMB_WEIGHT' + str(cutoff)[-1]] = [
             True if sum([
