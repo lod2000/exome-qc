@@ -12,74 +12,34 @@ from adjustText import adjust_text
 
 import parser
 
-# Returns DataFrame of true positives (reportables)
 def get_true_positives(df, caller):
     return df.iloc[[
             i for i, call in enumerate(df[caller]) if call == 'TP'
     ]].reset_index(drop=True)
 
-# Covered, not reportable
-# Sometimes a caller will find multiple mutations in the same location. These
-# are counted as separate false positives
+def get_true_negatives(df, caller):
+    return df.iloc[[
+            i for i, call in enumerate(df[caller]) if call == 'TN'
+    ]].reset_index(drop=True)
+
 def get_false_positives(df, caller):
     return df.iloc[[
             i for i, call in enumerate(df[caller]) if call == 'FP'
     ]].reset_index(drop=True)
 
-# Returns DataFrame from ground truth of variants not detected by caller
 def get_false_negatives(df, caller):
     return df.iloc[[
             i for i, call in enumerate(df[caller]) if call == 'FN'
     ]].reset_index(drop=True)
 
-# Not covered, not reportable
 def get_unclassified(df, caller_name):
     return df.iloc[[
             i for i, call in enumerate(df[caller])
             if call == 'UP' or call == 'UN'
     ]].reset_index(drop=True)
 
-# Returns list of positions which were not called (correctly) and were covered
-# by the small panel
-# TODO speed up
-#def get_true_negatives(fp, caller_name, panel):
-#    positions = parser.split_panel(panel)
-#    all_covered = fp.iloc[[
-#            i for i, covered in enumerate(fp['COVERED'])
-#            if covered and not fp[caller_name][i] == './.'
-#    ]].reset_index(drop=True)
-#    samples = list(set(fp['SAMPLE_ID']))
-#    # Each sample has the same covered positions
-#    all_positions = pandas.DataFrame(
-#            columns=['SAMPLE_ID', 'POSITION', 'CHROMOSOME', 'GENE']
-#    )
-#    for sample in samples:
-#        indices = []
-#        positions['SAMPLE_ID'] = [sample] * len(positions)
-#        covered = all_covered.iloc[[
-#                i for i, sample_id in enumerate(all_covered['SAMPLE_ID'])
-#                if sample_id == sample
-#        ]].reset_index(drop=True)
-#        called_positions = [
-#                i for i, pos in enumerate(positions['POSITION'])
-#                if pos in covered['POSITION'].tolist()
-#        ]
-#        for p in called_positions:
-#            for c in range(0, covered.shape[0]):
-#                if (positions['POSITION'][p] == covered['POSITION'][c]
-#                        and positions['GENE'][p] == covered['GENE'][c]
-#                        and positions['CHROMOSOME'][p] == covered['CHROMOSOME'][c]):
-#                    indices.append(p)
-#        all_positions = pandas.concat(
-#                [all_positions, positions.drop(positions.index[indices])],
-#                ignore_index=True
-#        )
-#    return all_positions
-def get_true_negatives(df, caller):
-    return df.iloc[[
-            i for i, call in enumerate(df[caller]) if call == 'TN'
-    ]].reset_index(drop=True)
-
+# Counts only variants marked 'positive' by specific callers and 'negative' by
+# all other callers.
 def comb_callers(df, select_callers):
     all_callers = parser.get_og_caller_names(df)
     tps = df
@@ -93,6 +53,8 @@ def comb_callers(df, select_callers):
             fps = get_true_negatives(fps, caller)
     return {'TP': tps.shape[0], 'FP': fps.shape[0]}
 
+# The probability that a variant is real given that it has been called.
+# Bayes' rule: P(A|B) = P(B|A) * P(A) / P(B)
 def p_real_given_called(tp, fp, reportables, covered):
     p_called_given_real = tp / reportables
     p_real = reportables / covered
@@ -100,6 +62,13 @@ def p_real_given_called(tp, fp, reportables, covered):
     p_real_given_called = p_called_given_real * p_real / p_called
     return p_real_given_called
 
+# Returns a dict of probabilities that a variant is real for all possible
+# combinations of callers. Gives a value 0 to any combination not found in the
+# data. Example:
+# GT_VARDICT            : 0.2
+# GT_VARDICT&GT_VARSCAN : 0.8
+# GT_GATK&GT_VARDICT    : 0.0
+# (That the callers not listed didn't call the variant is implied)
 def get_caller_comb_probs(df):
     reportables = len([rep for rep in df['REPORTABLE'] if rep])
     covered = len([
@@ -122,6 +91,9 @@ def get_caller_comb_probs(df):
     weights[''] = 0.0
     return weights
 
+# Function to return the number of true positives and false positives based on
+# the probability of a particular combination of callers, with the true/false
+# cutoff as the dependent variable
 def prob_fn(cutoffs, df):
     callers = parser.get_og_caller_names(df)
     probs = get_caller_comb_probs(df)
@@ -138,6 +110,7 @@ def prob_fn(cutoffs, df):
     fp = [len([s for s in status if s == 'FP']) for status in statuses]
     return {'TP': tp, 'FP': fp}
 
+# Add a caller based on the probability of a particular combination of callers
 def add_prob_caller(df):
     print('adding prob caller')
     cutoff = 0.3
@@ -147,10 +120,11 @@ def add_prob_caller(df):
     print('adding column')
     df['COMB_PROB'] = [
             True 
-            if probs['&'.join([c for c in callers if df[c][i][1] == 'P'])] > 0.3
+            if probs['&'.join([c for c in callers if df[c][i][1] == 'P'])] > cutoff
             else './.' for i in range(0, df.shape[0])
     ]
 
+# Returns the probabilities of individual callers predicting a reportable variant
 def get_caller_weights(df):
     callers = parser.get_og_caller_names(df)
     weights = []
@@ -163,6 +137,8 @@ def get_caller_weights(df):
         weights.append(p_real_given_called(tp, fp, tp + fn, all_calls))
     return weights
 
+# Returns true positive and false positive variants based on individual caller
+# probabilities, with the cutoff as the dependent variable
 def weight_fn(cutoffs, cov, weights):
     callers = parser.get_og_caller_names(cov)
     nps = [[
@@ -179,6 +155,8 @@ def weight_fn(cutoffs, cov, weights):
     fp = [len([s for s in status if s == 'FP']) for status in statuses]
     return {'TP': tp, 'FP': fp}
 
+# Add a caller based on the probability of an individual caller correctly
+# finding a reportable variant
 def add_weight_caller(df):
     weights = get_caller_weights(df)
     callers = parser.get_og_caller_names(df)
@@ -190,125 +168,7 @@ def add_weight_caller(df):
             ]) > cutoff else './.' for i in range(0, df.shape[0])
     ]
 
-# Returns DataFrame of analysis
-def analyze_callers(df, panel):
-    # Initialize analysis DataFrame
-    analysis_df = pandas.DataFrame({
-            'ANALYSIS' : ['True Positives', 'True Negatives',
-            'False Positives', 'False Negatives', 'True Positive Rate',
-            'True Negative Rate', 'Positive Predictive Value',
-            'Negative Predictive Value', 'False Negative Rate',
-            'False Positive Rate', 'False Discovery Rate',
-            'False Omission Rate',
-            'Accuracy', 'Matthews Correlation Coefficient']
-    })
-
-    print('Analyzing callers...')
-    callers = parser.get_caller_names(df)
-    for caller in callers:
-        # True positives DataFrame
-        tp_df = get_true_positives(df, caller)
-        # False positives DataFrame
-        fp_df = get_false_positives(df, caller)
-        # True negatives in DataFrame
-#        tn_df = get_true_negatives(fp_df, caller, panel)
-        tn_df = get_true_negatives(df, caller)
-        # False negatives DataFrame
-        fn_df = get_false_negatives(df, caller)
-
-        # Count rows in DataFrames
-        tp = tp_df.shape[0]
-        tn = tn_df.shape[0]
-        fp = fp_df.shape[0]
-        fn = fn_df.shape[0]
-
-        # Analysis
-        tpr = tp / (tp + fn) # True positive rate (sensitivity)
-        tnr = tn / (tn + fp) # True negative rate (specificity)
-        ppv = tp / (tp + fp) # Positive predictive value (precision)
-        npv = tn / (tn + fn) # Negative predictive value
-        fnr = fn / (fn + tp) # False negative rate (miss rate)
-        fpr = fp / (fp + tn) # False positive rate (fall-out)
-        fdr = fp / (fp + tp) # False discovery rate
-        fom = fn / (fn + tn) # False omission rate
-        acc = (tp + tn) / (tp + tn + fp + fn) # Accuracy
-        # Matthews correlation coefficient
-        mcc = ((tp * tn - fp * fn)
-                / math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)))
-
-        analysis_df[caller] = [
-                tp, tn, fp, fn, tpr, tnr, ppv, npv, fnr, fpr, fdr, fom, acc, mcc
-        ]
-    
-    return analysis_df
-            
-def f(weight, caller, df):
-    weighted_sum = 0
-    for i in range(0, df.shape[0]):
-        true_status = int(df['REPORTABLE'][i] == True)
-        call = int(not df[caller][i] == './.')
-        weighted_sum += (true_status - weight * call) ** 2
-        # weighted_sum += math.log(1 + math.exp(weight * call)) - true_status * weight * call
-    # l = [
-    #         math.log(1 + math.exp(weight * int(not df[caller][i] == './.')))
-    #         - int(df['REPORTABLE'][i] == True) * weight * int(not df[caller][i] == './.')
-    #         for i in range(0, df.shape[0])
-    # ]
-    print('test')
-    return weighted_sum
-
-def f2(weights, callers, df):
-    weighted_sum = 0
-    for i in range(0, df.shape[0]):
-        true_status = int(df['REPORTABLE'][i] == True)
-        weighted_calls = 0
-        for k, caller in enumerate(callers):
-            call = int(not df[caller][i] == './.')
-            weight = weights[k]
-            weighted_calls += weight * call
-        weighted_sum += math.log(1 + math.exp(weighted_calls)) - true_status * weighted_calls
-    print('test')
-    return weighted_sum
-
-def f3(x):
-    return sum(100.0*(x[1:]-x[:-1]**2.0)**2.0 + (1-x[:-1])**2.0)
-
-# WIP
-def generate_combined_caller_weights(df):
-    callers = parser.get_og_caller_names(df)
-    weights = []
-    for k, caller in enumerate(callers):
-        print(caller)
-        weight = fmin(lambda weight: f(weight, caller, df), 0, maxfun=20)[0]
-        weights.append(weight)
-        # Test
-        print(weight)
-        print(f(weight - 0.0005, caller, df))
-        print(f(weight, caller, df))
-        print(f(weight + 0.0005, caller, df))
-    # weights0 = numpy.array([0] * len(callers))
-    # print('Calculating weights...')
-    # weights = minimize(f2, weights0, args=(callers, df), method='nelder-mead', options={'xtol': 1e-8, 'disp': True})
-    # weights = minimize(lambda weights: f2(weights, callers, df), weights0, method='BFGS', options={'disp': True})
-    # x0 = numpy.array([0, 0, 0, 0, 0])
-    # weights = minimize(f3, x0, method='nelder-mead', options={'xtol': 1e-8, 'disp': True})
-    return weights
-
-def add_combined_caller(df, weights):
-    callers = parser.get_og_caller_names(df)
-    combined_status = []
-    for i in range(0, df.shape[0]):
-        weighted_calls = []
-        for k, caller in enumerate(callers):
-            call = int(not df[caller][i] == './.')
-            weight = weights[k]
-            weighted_calls.append(weight * call)
-        combined_status.append(sum(weighted_calls))
-    df['COMBINED_STATUS'] = combined_status
-    df['COMB_TF'] = [
-            True if status >= 0.009 else './.' for status in df['COMBINED_STATUS']
-    ]
-
+# Add callers which detect variants called by at least x original callers
 def add_x_or_more(df):
     for cutoff in range(2, len(parser.get_og_caller_names(df))):
         name = 'COMB_' + str(cutoff) + 'ORMORE'
@@ -317,29 +177,7 @@ def add_x_or_more(df):
                 for callers in df['TOTAL_CALLERS']
         ]
 
-def add_2_or_more(df):
-    name = 'COMB_2ORMORE'
-    df[name] = [
-            True if callers >= 2 else './.' for callers in df['TOTAL_CALLERS']
-    ]
-
-# WIP
-def add_differences(df):
-    callers = parser.get_og_caller_names(df)
-    all_except = list(callers)
-    for caller1 in callers:
-        all_except.remove(caller1)
-        print(caller1)
-        print(all_except)
-        # callers.remove(caller1)
-        for caller2 in all_except:
-            name = 'COMB_' + caller1.split('_')[-1] + '_U_' + caller2.split('_')[-1]
-            df[name] = [
-                    True if not df[caller1][i] == './.'
-                    and not df[caller2][i] == './.'
-                    else './.' for i in range(0, df.shape[0])
-            ]
-
+# Plot false positives vs true positives for all callers
 def plot_callers(df, analysis_df, plots_dir, combined=True):
     caller_pref = '^GT_'
     if combined:
@@ -407,3 +245,56 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
     adjust_text(annotations)
     pyplot.savefig(os.path.join(plots_dir, 'callers.pdf'), format='pdf')
     pyplot.show()
+
+# Returns DataFrame of analysis
+def analyze_callers(df, panel):
+    # Initialize analysis DataFrame
+    analysis_df = pandas.DataFrame({
+            'ANALYSIS' : ['True Positives', 'True Negatives',
+            'False Positives', 'False Negatives', 'True Positive Rate',
+            'True Negative Rate', 'Positive Predictive Value',
+            'Negative Predictive Value', 'False Negative Rate',
+            'False Positive Rate', 'False Discovery Rate',
+            'False Omission Rate',
+            'Accuracy', 'Matthews Correlation Coefficient']
+    })
+
+    print('Analyzing callers...')
+    callers = parser.get_caller_names(df)
+    for caller in callers:
+        # True positives DataFrame
+        tp_df = get_true_positives(df, caller)
+        # False positives DataFrame
+        fp_df = get_false_positives(df, caller)
+        # True negatives in DataFrame
+#        tn_df = get_true_negatives(fp_df, caller, panel)
+        tn_df = get_true_negatives(df, caller)
+        # False negatives DataFrame
+        fn_df = get_false_negatives(df, caller)
+
+        # Count rows in DataFrames
+        tp = tp_df.shape[0]
+        tn = tn_df.shape[0]
+        fp = fp_df.shape[0]
+        fn = fn_df.shape[0]
+
+        # Analysis
+        tpr = tp / (tp + fn) # True positive rate (sensitivity)
+        tnr = tn / (tn + fp) # True negative rate (specificity)
+        ppv = tp / (tp + fp) # Positive predictive value (precision)
+        npv = tn / (tn + fn) # Negative predictive value
+        fnr = fn / (fn + tp) # False negative rate (miss rate)
+        fpr = fp / (fp + tn) # False positive rate (fall-out)
+        fdr = fp / (fp + tp) # False discovery rate
+        fom = fn / (fn + tn) # False omission rate
+        acc = (tp + tn) / (tp + tn + fp + fn) # Accuracy
+        # Matthews correlation coefficient
+        mcc = ((tp * tn - fp * fn)
+                / math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)))
+
+        analysis_df[caller] = [
+                tp, tn, fp, fn, tpr, tnr, ppv, npv, fnr, fpr, fdr, fom, acc, mcc
+        ]
+    
+    return analysis_df
+
