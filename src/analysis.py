@@ -191,8 +191,14 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
             i for i, caller in enumerate(at['ANALYSIS']) 
             if re.search('GT_', caller)
     ]] 
-    at_ormore = at.iloc[[i for i, caller in enumerate(at['ANALYSIS']) if re.search('ORMORE', caller)]]
-    at_other = at.iloc[[i for i, caller in enumerate(at['ANALYSIS']) if re.search('COMB_[A-Z]', caller)]]
+    at_ormore = at.iloc[[
+            i for i, caller in enumerate(at['ANALYSIS']) 
+            if re.search('ORMORE', caller)
+    ]]
+    at_other = at.iloc[[
+            i for i, caller in enumerate(at['ANALYSIS']) 
+            if re.search('COMB_[A-Z]', caller)
+    ]]
 
     weights = get_caller_weights(df)
     cov = df.iloc[[
@@ -203,30 +209,29 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
     c2 = numpy.arange(0, 1, 0.01)
     f = weight_fn(c, cov, weights)
     f2 = prob_fn(c2, cov)
-    pyplot.plot(f['FP'], f['TP'], '--')
-    pyplot.plot(f2['FP'], f2['TP'])
+    pyplot.plot(f['FP'], f['TP'], '--', color='y')
+    pyplot.plot(f2['FP'], f2['TP'], '-', color='m')
 
     # Create scatter plot
     pyplot.scatter(
             at_gt['False Positives'], 
             at_gt['True Positives'], 
             marker='o', 
+            color='b'
     )
     pyplot.scatter(
             at_ormore['False Positives'],
             at_ormore['True Positives'],
-            marker='^'
+            marker='^',
+            color='g'
     )
     pyplot.scatter(
             at_other['False Positives'],
             at_other['True Positives'],
-            marker='*'
+            marker='*',
+            color='r'
     )
     # Plot labels
-    pyplot.xlim(xmin=300, xmax=420)
-    pyplot.ylim(ymin=100, ymax=300)
-    #pyplot.ylim(ymin=0)
-    #pyplot.xlim(xmin=0)
     pyplot.title('Mutation caller positive hits')
     pyplot.ylabel('True positives')
     pyplot.xlabel('False positives')
@@ -236,13 +241,16 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
             at['False Positives'], at['True Positives'], callers
     ):
         annotations.append(pyplot.text(x, y, caller))
-        #        caller, xy=(x, y), 
-        #        xytext=(-10, -10), 
-        #        textcoords='offset points', 
-        #        ha='right', 
-        #        va='bottom',
-        #))
     adjust_text(annotations)
+
+    #pyplot.axes([0, 0, 1, 1])
+    pyplot.ylim(ymin=0)
+    pyplot.xlim(xmin=0)
+
+    #pyplot.axes([0.6, 0.2, 0.8, 0.6])
+    #pyplot.xlim(xmin=300, xmax=420)
+    #pyplot.ylim(ymin=100, ymax=300)
+
     pyplot.savefig(os.path.join(plots_dir, 'callers.pdf'), format='pdf')
     pyplot.show()
 
@@ -267,7 +275,6 @@ def analyze_callers(df, panel):
         # False positives DataFrame
         fp_df = get_false_positives(df, caller)
         # True negatives in DataFrame
-#        tn_df = get_true_negatives(fp_df, caller, panel)
         tn_df = get_true_negatives(df, caller)
         # False negatives DataFrame
         fn_df = get_false_negatives(df, caller)
