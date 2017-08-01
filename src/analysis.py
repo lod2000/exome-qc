@@ -38,6 +38,14 @@ def get_unclassified(df, caller_name):
             if call == 'UP' or call == 'UN'
     ]].reset_index(drop=True)
 
+def get_accuracy(tp, tn, fp, fn):
+    return (tp + tn) / (tp + tn + fp + fn)
+
+# Matthews Correlation Coefficient
+def get_mcc(tp, tn, fp, fn):
+    return ((tp * tn - fp * fn)
+                / math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)))
+
 # Counts only variants marked 'positive' by specific callers and 'negative' by
 # all other callers.
 def comb_callers(df, select_callers):
@@ -108,17 +116,19 @@ def prob_fn(cutoffs, df):
     ] for np in nps]
     tp = [len([s for s in status if s == 'TP']) for status in statuses]
     fp = [len([s for s in status if s == 'FP']) for status in statuses]
-    return {'TP': tp, 'FP': fp}
+    tn = [len([s for s in status if s == 'TN']) for status in statuses]
+    fn = [len([s for s in status if s == 'FN']) for status in statuses]
+    return {'TP': tp, 'FP': fp, 'TN': tn, 'FN': fn}
 
 # Add a caller based on the probability of a particular combination of callers
-def add_prob_caller(df):
+def add_prob_caller(cutoff, df):
+    #cutoff = 0.2
     print('adding prob caller')
-    cutoff = 0.3
     callers = parser.get_og_caller_names(df)
     print('getting probs')
     probs = get_caller_comb_probs(df)
     print('adding column')
-    df['COMB_PROB'] = [
+    df['COMB_PROB' + str(cutoff)] = [
             True 
             if probs['&'.join([c for c in callers if df[c][i][1] == 'P'])] > cutoff
             else './.' for i in range(0, df.shape[0])
@@ -153,15 +163,16 @@ def weight_fn(cutoffs, cov, weights):
     ] for np in nps]
     tp = [len([s for s in status if s == 'TP']) for status in statuses]
     fp = [len([s for s in status if s == 'FP']) for status in statuses]
-    return {'TP': tp, 'FP': fp}
+    tn = [len([s for s in status if s == 'TN']) for status in statuses]
+    fn = [len([s for s in status if s == 'FN']) for status in statuses]
+    return {'TP': tp, 'FP': fp, 'TN': tn, 'FN': fn}
 
 # Add a caller based on the probability of an individual caller correctly
 # finding a reportable variant
-def add_weight_caller(df):
-    weights = get_caller_weights(df)
+def add_weight_caller(cutoff, df, weights):
+    #cutoff = 0.2
     callers = parser.get_og_caller_names(df)
-    cutoff = 0.3
-    df['COMB_WEIGHT' + str(cutoff)[-1]] = [
+    df['COMB_WEIGHT' + str(cutoff)] = [
             True if sum([
                     weight for k, weight in enumerate(weights) 
                     if df[callers[k]][i][1] == 'P'
@@ -200,11 +211,11 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
             if re.search('COMB_[A-Z]', caller)
     ]]
 
-    weights = get_caller_weights(df)
     cov = df.iloc[[
             i for i in range(0, df.shape[0])
             if df['COVERED'][i] or df['REPORTABLE'][i]
     ]].reset_index(drop=True)
+    weights = get_caller_weights(df)
     c = numpy.arange(0, sum(weights), 0.1)
     c2 = numpy.arange(0, 1, 0.01)
     f = weight_fn(c, cov, weights)

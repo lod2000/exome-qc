@@ -3,6 +3,7 @@ import sys
 import glob
 
 import pandas
+import numpy
 
 import parser
 import analysis
@@ -43,8 +44,43 @@ else:
     # Add combined callers to df
     print('Adding combined callers...')
     analysis.add_x_or_more(df)
-    analysis.add_prob_caller(df)
-    analysis.add_weight_caller(df)
+    covered = df.iloc[[
+            i for i in range(0, df.shape[0])
+            if df['COVERED'][i] or df['REPORTABLE'][i]
+    ]].reset_index(drop=True)
+
+    # Generate probability combined caller
+    prob_cutoffs = numpy.arange(0, 1, 0.01)
+    prob_vals = analysis.prob_fn(prob_cutoffs, covered)
+    prob_ratios = [
+            analysis.get_mcc(
+                    prob_vals['TP'][i], prob_vals['TN'][i],
+                    prob_vals['FP'][i], prob_vals['FN'][i]
+            )
+            for i in range(0, len(prob_vals['FP']))
+    ]
+    prob_cutoff = prob_cutoffs[[
+            i for i, ratio in enumerate(prob_ratios) 
+            if ratio == max(prob_ratios)
+    ][-1]]
+    analysis.add_prob_caller(prob_cutoff, df)
+
+    # Generate weights combined caller by calculating optimum cutoff
+    weights = analysis.get_caller_weights(df)
+    weight_cutoffs = numpy.arange(0, sum(weights), 0.01)
+    weight_vals = analysis.weight_fn(weight_cutoffs, covered, weights)
+    weight_ratios = [
+            analysis.get_mcc(
+                    weight_vals['TP'][i], weight_vals['TN'][i],
+                    weight_vals['FP'][i], weight_vals['FN'][i]
+            )
+            for i in range(0, len(weight_vals['FP']))
+    ]
+    weight_cutoff = weight_cutoffs[[
+            i for i, ratio in enumerate(weight_ratios)
+            if ratio == max(weight_ratios)
+    ][-1]]
+    analysis.add_weight_caller(weight_cutoff, df, weights)
     print('Classifying combined calls...')
     parser.classify(df, parser.get_new_caller_names(df))
     print('Creating new tab file...')
