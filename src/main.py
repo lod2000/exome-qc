@@ -98,15 +98,16 @@ else:
             encoding='utf-8', index=False
     )
 
+# Get DataFrame of covered variants
+covered = df.iloc[[
+        i for i in range(0, df.shape[0])
+        if df['COVERED'][i] or df['REPORTABLE'][i]
+]].reset_index(drop=True)
 training = covered[:int(covered.shape[0] / 2)].reset_index(drop=True)
 analysis_df = analysis.analyze_callers(training, panel)
 analysis.plot_callers(training, analysis_df, output_dir)
 analysis_file = os.path.join(output_dir, 'analysis.csv')
-try:
-    analysis_df.to_csv(
-            analysis_file, sep='\t', encoding='utf-8', index=False
-    )
-    print('Output to file ' + analysis_file)
-except PermissionError:
-    print('Another program is using the file analysis.csv or combined.tab.\
-           Please close and try again.')
+analysis_df.to_csv(
+        analysis_file, sep='\t', encoding='utf-8', index=False
+)
+print('Output to file ' + analysis_file)
