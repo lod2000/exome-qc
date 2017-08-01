@@ -181,7 +181,7 @@ def add_weight_caller(cutoff, df, weights):
 
 # Add callers which detect variants called by at least x original callers
 def add_x_or_more(df):
-    for cutoff in range(2, len(parser.get_og_caller_names(df))):
+    for cutoff in range(2, len(parser.get_og_caller_names(df)) + 1):
         name = 'COMB_' + str(cutoff) + 'ORMORE'
         df[name] = [
                 True if callers >= cutoff else './.'
