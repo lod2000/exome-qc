@@ -339,11 +339,6 @@ def combine(db_name, bed_file, samples_dir):
     )
     df['COVERED'] = [(i in covered.index) for i in range(0, df.shape[0])]
 
-    # Add x or more
-    print('Adding combined callers...')
-    #analysis.add_x_or_more(df)
-    callers = get_caller_names(df)
-
     # Classify calls (TP, FN, etc.)
     print('Classifying calls...')
     classify(df, get_og_caller_names(df))

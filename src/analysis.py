@@ -5,13 +5,13 @@ import re
 
 import pandas
 import numpy
-from scipy.optimize import fmin
-from scipy.optimize import minimize
+#from scipy.optimize import fmin
+#from scipy.optimize import minimize
 import matplotlib.pyplot as pyplot
 from adjustText import adjust_text
-from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
+#from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
 import matplotlib
-from matplotlib.legend_handler import HandlerLine2D
+#from matplotlib.legend_handler import HandlerLine2D
 
 import parser
 
@@ -218,15 +218,23 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
 
     # Plot labels
     pyplot.title('Mutation caller positive hits')
-    pyplot.ylabel('True positives')
-    pyplot.xlabel('False positives')
+    #pyplot.ylabel('True positives')
+    #pyplot.xlabel('False positives')
+    pyplot.xlabel('Specificity')
+    pyplot.ylabel('Sensitivity')
     # Individual probability caller curve
     weights = get_caller_weights(df)
     weight_cutoffs = numpy.arange(0, sum(weights), 0.1)
     weight_vals = weight_fn(weight_cutoffs, cov, weights)
     weight_line = ax.plot(
-            weight_vals['FP'], 
-            weight_vals['TP'], 
+            #weight_vals['FP'], 
+            [weight_vals['TN'][i] / (weight_vals['TN'][i] + weight_vals['FP'][i])
+                    for i in range(0, len(weight_vals['TN']))
+            ],
+            #weight_vals['TP'], 
+            [weight_vals['TP'][i] / (weight_vals['TP'][i] + weight_vals['FN'][i])
+                    for i in range(0, len(weight_vals['TN']))
+            ],
             '--', 
             color='y', 
             label='Weight caller'
@@ -234,17 +242,26 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
     # Combined probability caller curve
     prob_cutoffs = numpy.arange(0, 1, 0.01)
     prob_vals = prob_fn(prob_cutoffs, cov)
+    l = len(prob_vals['TN'])
     prob_line = ax.plot(
-            prob_vals['FP'], 
-            prob_vals['TP'], 
+            #prob_vals['FP'], 
+            #prob_vals['TP'], 
+            [prob_vals['TN'][i] / (prob_vals['TN'][i] + prob_vals['FP'][i])
+                    for i in range(0, len(prob_vals['TN']))
+            ],
+            [prob_vals['TP'][i] / (prob_vals['TP'][i] + prob_vals['FN'][i])
+                    for i in range(0, len(prob_vals['TN']))
+            ],
             '-', 
             color='m', 
             label='Probability caller'
     )
     # Original callers scatter plot
     original = ax.scatter(
-            at_gt['False Positives'], 
-            at_gt['True Positives'], 
+            #at_gt['False Positives'], 
+            #at_gt['True Positives'], 
+            at_gt['True Negative Rate'],
+            at_gt['True Positive Rate'],
             marker='o', 
             color='b',
             s=50,
@@ -252,8 +269,10 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
     )
     # n or more callers scatter plot
     ormore = ax.scatter(
-            at_ormore['False Positives'],
-            at_ormore['True Positives'],
+            #at_ormore['False Positives'],
+            #at_ormore['True Positives'],
+            at_ormore['True Negative Rate'],
+            at_ormore['True Positive Rate'],
             marker='^',
             color='g',
             s=100,
@@ -261,8 +280,10 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
     )
     # Probability callers scatter plot
     probs = ax.scatter(
-            at_other['False Positives'],
-            at_other['True Positives'],
+            #at_other['False Positives'],
+            #at_other['True Positives'],
+            at_other['True Negative Rate'],
+            at_other['True Positive Rate'],
             marker='*',
             color='r',
             s=100,
@@ -271,14 +292,17 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
     # Point labels
     annotations = []
     for x, y, caller in zip(
-            at['False Positives'], at['True Positives'], callers
+            #at['False Positives'], at['True Positives'], callers
+            at['True Negative Rate'], at['True Positive Rate'], callers
     ):
         annotations.append(pyplot.text(x, y, caller))
     adjust_text(annotations, only_move='y')
 
-    pyplot.ylim(ymin=0, ymax=(weight_vals['TP'][0]+weight_vals['FN'][0] + 10))
+    #pyplot.ylim(ymin=0, ymax=(weight_vals['TP'][0]+weight_vals['FN'][0] + 10))
+    pyplot.ylim(ymin=0, ymax=1)
     pyplot.xlim(xmin=0)
-    pyplot.legend(loc=4)
+    #pyplot.legend(loc=4)
+    pyplot.legend(loc=3)
 
     pyplot.show()
 

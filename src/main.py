@@ -76,6 +76,7 @@ else:
 
     # Generate weights combined caller by calculating optimum cutoff
     weights = analysis.get_caller_weights(df)
+    print(weights)
     weight_cutoffs = numpy.arange(0, sum(weights), 0.01)
     weight_vals = analysis.weight_fn(weight_cutoffs, training, weights)
     weight_ratios = [
