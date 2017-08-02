@@ -347,14 +347,6 @@ def combine(db_name, bed_file, samples_dir):
     # Classify calls (TP, FN, etc.)
     print('Classifying calls...')
     classify(df, get_og_caller_names(df))
-    #for caller in callers:
-    #    print(caller)
-    #    np = ['N' if call == './.' else 'P' for call in df[caller]]
-    #    df[caller] = [
-    #            str((np[i] == 'P') == df['REPORTABLE'][i])[0] + np[i] 
-    #            if (df['COVERED'][i] or df['REPORTABLE'][i]) else 'U' + np[i]
-    #            for i in range(0, df.shape[0])
-    #    ]
 
     # Create parsed tab file
     df.to_csv(

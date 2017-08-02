@@ -9,6 +9,9 @@ from scipy.optimize import fmin
 from scipy.optimize import minimize
 import matplotlib.pyplot as pyplot
 from adjustText import adjust_text
+from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
+import matplotlib
+from matplotlib.legend_handler import HandlerLine2D
 
 import parser
 
@@ -37,6 +40,14 @@ def get_unclassified(df, caller_name):
             i for i, call in enumerate(df[caller])
             if call == 'UP' or call == 'UN'
     ]].reset_index(drop=True)
+
+def get_accuracy(tp, tn, fp, fn):
+    return (tp + tn) / (tp + tn + fp + fn)
+
+# Matthews Correlation Coefficient
+def get_mcc(tp, tn, fp, fn):
+    return ((tp * tn - fp * fn)
+                / math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)))
 
 # Counts only variants marked 'positive' by specific callers and 'negative' by
 # all other callers.
@@ -108,16 +119,14 @@ def prob_fn(cutoffs, df):
     ] for np in nps]
     tp = [len([s for s in status if s == 'TP']) for status in statuses]
     fp = [len([s for s in status if s == 'FP']) for status in statuses]
-    return {'TP': tp, 'FP': fp}
+    tn = [len([s for s in status if s == 'TN']) for status in statuses]
+    fn = [len([s for s in status if s == 'FN']) for status in statuses]
+    return {'TP': tp, 'FP': fp, 'TN': tn, 'FN': fn}
 
 # Add a caller based on the probability of a particular combination of callers
-def add_prob_caller(df):
-    print('adding prob caller')
-    cutoff = 0.3
+def add_prob_caller(cutoff, df):
     callers = parser.get_og_caller_names(df)
-    print('getting probs')
     probs = get_caller_comb_probs(df)
-    print('adding column')
     df['COMB_PROB'] = [
             True 
             if probs['&'.join([c for c in callers if df[c][i][1] == 'P'])] > cutoff
@@ -153,15 +162,15 @@ def weight_fn(cutoffs, cov, weights):
     ] for np in nps]
     tp = [len([s for s in status if s == 'TP']) for status in statuses]
     fp = [len([s for s in status if s == 'FP']) for status in statuses]
-    return {'TP': tp, 'FP': fp}
+    tn = [len([s for s in status if s == 'TN']) for status in statuses]
+    fn = [len([s for s in status if s == 'FN']) for status in statuses]
+    return {'TP': tp, 'FP': fp, 'TN': tn, 'FN': fn}
 
 # Add a caller based on the probability of an individual caller correctly
 # finding a reportable variant
-def add_weight_caller(df):
-    weights = get_caller_weights(df)
+def add_weight_caller(cutoff, df, weights):
     callers = parser.get_og_caller_names(df)
-    cutoff = 0.3
-    df['COMB_WEIGHT' + str(cutoff)[-1]] = [
+    df['COMB_WEIGHT'] = [
             True if sum([
                     weight for k, weight in enumerate(weights) 
                     if df[callers[k]][i][1] == 'P'
@@ -170,7 +179,7 @@ def add_weight_caller(df):
 
 # Add callers which detect variants called by at least x original callers
 def add_x_or_more(df):
-    for cutoff in range(2, len(parser.get_og_caller_names(df))):
+    for cutoff in range(2, len(parser.get_og_caller_names(df)) + 1):
         name = 'COMB_' + str(cutoff) + 'ORMORE'
         df[name] = [
                 True if callers >= cutoff else './.'
@@ -179,6 +188,8 @@ def add_x_or_more(df):
 
 # Plot false positives vs true positives for all callers
 def plot_callers(df, analysis_df, plots_dir, combined=True):
+    matplotlib.rcParams.update({'font.size': 16})
+    fig, ax = pyplot.subplots()
     caller_pref = '^GT_'
     if combined:
         caller_pref = '^(GT_|COMB_)' 
@@ -191,42 +202,53 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
             i for i, caller in enumerate(at['ANALYSIS']) 
             if re.search('GT_', caller)
     ]] 
-    at_ormore = at.iloc[[i for i, caller in enumerate(at['ANALYSIS']) if re.search('ORMORE', caller)]]
-    at_other = at.iloc[[i for i, caller in enumerate(at['ANALYSIS']) if re.search('COMB_[A-Z]', caller)]]
+    at_ormore = at.iloc[[
+            i for i, caller in enumerate(at['ANALYSIS']) 
+            if re.search('ORMORE', caller)
+    ]]
+    at_other = at.iloc[[
+            i for i, caller in enumerate(at['ANALYSIS']) 
+            if re.search('COMB_[A-Z]', caller)
+    ]]
 
-    weights = get_caller_weights(df)
     cov = df.iloc[[
             i for i in range(0, df.shape[0])
             if df['COVERED'][i] or df['REPORTABLE'][i]
     ]].reset_index(drop=True)
+    weights = get_caller_weights(df)
     c = numpy.arange(0, sum(weights), 0.1)
     c2 = numpy.arange(0, 1, 0.01)
     f = weight_fn(c, cov, weights)
     f2 = prob_fn(c2, cov)
-    pyplot.plot(f['FP'], f['TP'], '--')
-    pyplot.plot(f2['FP'], f2['TP'])
+    weight_line = ax.plot(f['FP'], f['TP'], '--', color='y', label='Weight caller')
+    prob_line = ax.plot(f2['FP'], f2['TP'], '-', color='m', label='Probability caller')
 
     # Create scatter plot
-    pyplot.scatter(
+    original = ax.scatter(
             at_gt['False Positives'], 
             at_gt['True Positives'], 
             marker='o', 
+            color='b',
+            s=50,
+            label='Original callers'
     )
-    pyplot.scatter(
+    ormore = ax.scatter(
             at_ormore['False Positives'],
             at_ormore['True Positives'],
-            marker='^'
+            marker='^',
+            color='g',
+            s=100,
+            label='N or more'
     )
-    pyplot.scatter(
+    probs = ax.scatter(
             at_other['False Positives'],
             at_other['True Positives'],
-            marker='*'
+            marker='*',
+            color='r',
+            s=100,
+            label='Probability cutoff'
     )
     # Plot labels
-    pyplot.xlim(xmin=300, xmax=420)
-    pyplot.ylim(ymin=100, ymax=300)
-    #pyplot.ylim(ymin=0)
-    #pyplot.xlim(xmin=0)
     pyplot.title('Mutation caller positive hits')
     pyplot.ylabel('True positives')
     pyplot.xlabel('False positives')
@@ -236,13 +258,26 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
             at['False Positives'], at['True Positives'], callers
     ):
         annotations.append(pyplot.text(x, y, caller))
-        #        caller, xy=(x, y), 
-        #        xytext=(-10, -10), 
-        #        textcoords='offset points', 
-        #        ha='right', 
-        #        va='bottom',
-        #))
-    adjust_text(annotations)
+    adjust_text(annotations, only_move='y')
+
+    pyplot.ylim(ymin=0, ymax=(f['TP'][0]+f['FN'][0] + 10))
+    pyplot.xlim(xmin=0)
+    #ax.set_xscale('log')
+
+    #axins = zoomed_inset_axes(ax, 1.5, loc=4)
+    #axins.plot(f2['FP'], f2['TP'], 'm-')
+    #axins.set_xlim(100, 250)
+    #axins.set_ylim(40, 90)
+    
+    #a = pyplot.axes([0.6, 0.2, 0.2, 0.4])
+    #pyplot.xlim(xmin=300, xmax=420)
+    #pyplot.ylim(ymin=100, ymax=300)
+
+    #triangle = mlines.Line2D([], [], color='green', marker='^', label='n or more')
+    #dot = mlines.Line2D([], [], color='blue', marker='o', label='Original callers')
+    #star =mlines.Line2D
+    pyplot.legend(loc=4)
+
     pyplot.savefig(os.path.join(plots_dir, 'callers.pdf'), format='pdf')
     pyplot.show()
 
@@ -267,7 +302,6 @@ def analyze_callers(df, panel):
         # False positives DataFrame
         fp_df = get_false_positives(df, caller)
         # True negatives in DataFrame
-#        tn_df = get_true_negatives(fp_df, caller, panel)
         tn_df = get_true_negatives(df, caller)
         # False negatives DataFrame
         fn_df = get_false_negatives(df, caller)
