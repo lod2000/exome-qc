@@ -11,6 +11,7 @@ import matplotlib.pyplot as pyplot
 from adjustText import adjust_text
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
 import matplotlib
+from matplotlib.legend_handler import HandlerLine2D
 
 import parser
 
@@ -219,30 +220,33 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
     c2 = numpy.arange(0, 1, 0.01)
     f = weight_fn(c, cov, weights)
     f2 = prob_fn(c2, cov)
-    ax.plot(f['FP'], f['TP'], '--', color='y')
-    ax.plot(f2['FP'], f2['TP'], '-', color='m')
+    weight_line = ax.plot(f['FP'], f['TP'], '--', color='y', label='Weight caller')
+    prob_line = ax.plot(f2['FP'], f2['TP'], '-', color='m', label='Probability caller')
 
     # Create scatter plot
-    ax.scatter(
+    original = ax.scatter(
             at_gt['False Positives'], 
             at_gt['True Positives'], 
             marker='o', 
             color='b',
-            s=50
+            s=50,
+            label='Original callers'
     )
-    ax.scatter(
+    ormore = ax.scatter(
             at_ormore['False Positives'],
             at_ormore['True Positives'],
             marker='^',
             color='g',
-            s=100
+            s=100,
+            label='N or more'
     )
-    ax.scatter(
+    probs = ax.scatter(
             at_other['False Positives'],
             at_other['True Positives'],
             marker='*',
             color='r',
-            s=100
+            s=100,
+            label='Probability cutoff'
     )
     # Plot labels
     pyplot.title('Mutation caller positive hits')
@@ -268,6 +272,11 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
     #a = pyplot.axes([0.6, 0.2, 0.2, 0.4])
     #pyplot.xlim(xmin=300, xmax=420)
     #pyplot.ylim(ymin=100, ymax=300)
+
+    #triangle = mlines.Line2D([], [], color='green', marker='^', label='n or more')
+    #dot = mlines.Line2D([], [], color='blue', marker='o', label='Original callers')
+    #star =mlines.Line2D
+    pyplot.legend(loc=4)
 
     pyplot.savefig(os.path.join(plots_dir, 'callers.pdf'), format='pdf')
     pyplot.show()
