@@ -215,15 +215,33 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
             i for i in range(0, df.shape[0])
             if df['COVERED'][i] or df['REPORTABLE'][i]
     ]].reset_index(drop=True)
-    weights = get_caller_weights(df)
-    c = numpy.arange(0, sum(weights), 0.1)
-    c2 = numpy.arange(0, 1, 0.01)
-    f = weight_fn(c, cov, weights)
-    f2 = prob_fn(c2, cov)
-    weight_line = ax.plot(f['FP'], f['TP'], '--', color='y', label='Weight caller')
-    prob_line = ax.plot(f2['FP'], f2['TP'], '-', color='m', label='Probability caller')
 
-    # Create scatter plot
+    # Plot labels
+    pyplot.title('Mutation caller positive hits')
+    pyplot.ylabel('True positives')
+    pyplot.xlabel('False positives')
+    # Individual probability caller curve
+    weights = get_caller_weights(df)
+    weight_cutoffs = numpy.arange(0, sum(weights), 0.1)
+    weight_vals = weight_fn(weight_cutoffs, cov, weights)
+    weight_line = ax.plot(
+            weight_vals['FP'], 
+            weight_vals['TP'], 
+            '--', 
+            color='y', 
+            label='Weight caller'
+    )
+    # Combined probability caller curve
+    prob_cutoffs = numpy.arange(0, 1, 0.01)
+    prob_vals = prob_fn(prob_cutoffs, cov)
+    prob_line = ax.plot(
+            prob_vals['FP'], 
+            prob_vals['TP'], 
+            '-', 
+            color='m', 
+            label='Probability caller'
+    )
+    # Original callers scatter plot
     original = ax.scatter(
             at_gt['False Positives'], 
             at_gt['True Positives'], 
@@ -232,6 +250,7 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
             s=50,
             label='Original callers'
     )
+    # n or more callers scatter plot
     ormore = ax.scatter(
             at_ormore['False Positives'],
             at_ormore['True Positives'],
@@ -240,6 +259,7 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
             s=100,
             label='N or more'
     )
+    # Probability callers scatter plot
     probs = ax.scatter(
             at_other['False Positives'],
             at_other['True Positives'],
@@ -248,10 +268,6 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
             s=100,
             label='Probability cutoff'
     )
-    # Plot labels
-    pyplot.title('Mutation caller positive hits')
-    pyplot.ylabel('True positives')
-    pyplot.xlabel('False positives')
     # Point labels
     annotations = []
     for x, y, caller in zip(
@@ -260,25 +276,10 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
         annotations.append(pyplot.text(x, y, caller))
     adjust_text(annotations, only_move='y')
 
-    pyplot.ylim(ymin=0, ymax=(f['TP'][0]+f['FN'][0] + 10))
+    pyplot.ylim(ymin=0, ymax=(weight_vals['TP'][0]+weight_vals['FN'][0] + 10))
     pyplot.xlim(xmin=0)
-    #ax.set_xscale('log')
-
-    #axins = zoomed_inset_axes(ax, 1.5, loc=4)
-    #axins.plot(f2['FP'], f2['TP'], 'm-')
-    #axins.set_xlim(100, 250)
-    #axins.set_ylim(40, 90)
-    
-    #a = pyplot.axes([0.6, 0.2, 0.2, 0.4])
-    #pyplot.xlim(xmin=300, xmax=420)
-    #pyplot.ylim(ymin=100, ymax=300)
-
-    #triangle = mlines.Line2D([], [], color='green', marker='^', label='n or more')
-    #dot = mlines.Line2D([], [], color='blue', marker='o', label='Original callers')
-    #star =mlines.Line2D
     pyplot.legend(loc=4)
 
-    pyplot.savefig(os.path.join(plots_dir, 'callers.pdf'), format='pdf')
     pyplot.show()
 
 # Returns DataFrame of analysis

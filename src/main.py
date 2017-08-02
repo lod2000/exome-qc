@@ -104,8 +104,8 @@ covered = df.iloc[[
         if df['COVERED'][i] or df['REPORTABLE'][i]
 ]].reset_index(drop=True)
 training = covered[:int(covered.shape[0] / 2)].reset_index(drop=True)
-analysis_df = analysis.analyze_callers(training, panel)
-analysis.plot_callers(training, analysis_df, output_dir)
+analysis_df = analysis.analyze_callers(covered, panel)
+analysis.plot_callers(covered, analysis_df, output_dir)
 analysis_file = os.path.join(output_dir, 'analysis.csv')
 analysis_df.to_csv(
         analysis_file, sep='\t', encoding='utf-8', index=False
