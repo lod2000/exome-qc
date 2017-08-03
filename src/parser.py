@@ -211,11 +211,11 @@ def get_og_caller_names(sample):
 
 def get_new_caller_names(df):
     headers = list(df)
-    return [h for h in headers if re.search('^COMB_', h)]
+    return [h for h in headers if re.search('^JOINT_', h)]
 
 def get_caller_names(sample):
     headers = list(sample)
-    return [h for h in headers if re.search('^GT_', h) or re.search('^COMB_', h)]
+    return [h for h in headers if re.search('^GT_', h) or re.search('^JOINT_', h)]
 
 # Returns list of sample paths from ground truth that are in data/samples
 def find_samples(gt, samples_dir):

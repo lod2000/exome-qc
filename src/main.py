@@ -56,7 +56,6 @@ else:
     analysis.add_x_or_more(df)
     training = covered[int(covered.shape[0] / 2):].reset_index(drop=True)
     print(covered.shape[0])
-    print(training.shape[0])
 
     # Generate probability combined caller
     prob_cutoffs = numpy.arange(0, 1, 0.01)
@@ -72,6 +71,7 @@ else:
             i for i, ratio in enumerate(prob_ratios) 
             if ratio == max(prob_ratios)
     ][-1]]
+    print('Combined cutoff: ' + str(prob_cutoff))
     analysis.add_prob_caller(prob_cutoff, df)
 
     # Generate weights combined caller by calculating optimum cutoff
@@ -90,6 +90,7 @@ else:
             i for i, ratio in enumerate(weight_ratios)
             if ratio == max(weight_ratios)
     ][-1]]
+    print('Individual cutoff: ' + str(weight_cutoff))
     analysis.add_weight_caller(weight_cutoff, df, weights)
     print('Classifying combined calls...')
     parser.classify(df, parser.get_new_caller_names(df))
