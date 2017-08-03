@@ -127,7 +127,6 @@ def prob_fn(cutoffs, df):
 def add_prob_caller(cutoff, df):
     callers = parser.get_og_caller_names(df)
     probs = get_caller_comb_probs(df)
-    cutoff = 0.3
     df['JOINT_COMB'] = [
             True 
             if probs['&'.join([c for c in callers if df[c][i][1] == 'P'])] > cutoff
@@ -171,7 +170,6 @@ def weight_fn(cutoffs, cov, weights):
 # finding a reportable variant
 def add_weight_caller(cutoff, df, weights):
     callers = parser.get_og_caller_names(df)
-    cutoff = 0.05
     df['JOINT_INDIV'] = [
             True if sum([
                     weight for k, weight in enumerate(weights) 
@@ -191,7 +189,7 @@ def add_x_or_more(df):
 # Plot false positives vs true positives for all callers
 def plot_callers(df, analysis_df, plots_dir, combined=True):
     matplotlib.rcParams.update({'font.size': 16})
-    fig, ax = pyplot.subplots()
+    figure, axes = pyplot.subplots()
     caller_pref = '^GT_'
     if combined:
         caller_pref = '^(GT_|JOINT_)' 
@@ -213,55 +211,53 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
             if re.search('JOINT_[A-Z]', caller)
     ]]
 
-    cov = df.iloc[[
+    covered = df.iloc[[
             i for i in range(0, df.shape[0])
             if df['COVERED'][i] or df['REPORTABLE'][i]
     ]].reset_index(drop=True)
 
     # Plot labels
     pyplot.title('Mutation Caller ROC')
-    #pyplot.ylabel('True positives')
-    #pyplot.xlabel('False positives')
     pyplot.xlabel('False Positive Rate')
     pyplot.ylabel('True Positive Rate')
+
     # Individual probability caller curve
-    weights = get_caller_weights(df)
-    weight_cutoffs = numpy.arange(0, sum(weights), 0.1)
-    weight_vals = weight_fn(weight_cutoffs, cov, weights)
-    weight_line = ax.plot(
-            #weight_vals['FP'], 
-            [weight_vals['FP'][i] / (weight_vals['FP'][i] + weight_vals['TN'][i])
-                    for i in range(0, len(weight_vals['TN']))
+    indiv_weights = get_caller_weights(df)
+    indiv_cutoffs = numpy.arange(0, sum(indiv_weights), 0.1)
+    indiv_vals = weight_fn(indiv_cutoffs, covered, indiv_weights)
+    indiv_line = axes.plot(
+            # False Positive Rate
+            [indiv_vals['FP'][i] / (indiv_vals['FP'][i] + indiv_vals['TN'][i])
+                    for i in range(0, len(indiv_vals['TN']))
             ],
-            #weight_vals['TP'], 
-            [weight_vals['TP'][i] / (weight_vals['TP'][i] + weight_vals['FN'][i])
-                    for i in range(0, len(weight_vals['TN']))
+            # True Positive Rate
+            [indiv_vals['TP'][i] / (indiv_vals['TP'][i] + indiv_vals['FN'][i])
+                    for i in range(0, len(indiv_vals['TN']))
             ],
             '--', 
             color='y', 
             label='Individual weighted caller'
     )
+
     # Combined probability caller curve
-    prob_cutoffs = numpy.arange(0, 1, 0.01)
-    prob_vals = prob_fn(prob_cutoffs, cov)
-    l = len(prob_vals['TN'])
-    prob_line = ax.plot(
-            #prob_vals['FP'], 
-            #prob_vals['TP'], 
-            [prob_vals['FP'][i] / (prob_vals['TN'][i] + prob_vals['FP'][i])
-                    for i in range(0, len(prob_vals['TN']))
+    comb_cutoffs = numpy.arange(0, 1, 0.01)
+    comb_vals = prob_fn(comb_cutoffs, covered)
+    axes.plot(
+            # False Positive Rate
+            [comb_vals['FP'][i] / (comb_vals['TN'][i] + comb_vals['FP'][i])
+                    for i in range(0, len(comb_vals['TN']))
             ],
-            [prob_vals['TP'][i] / (prob_vals['TP'][i] + prob_vals['FN'][i])
-                    for i in range(0, len(prob_vals['TN']))
+            # True Positive Rate
+            [comb_vals['TP'][i] / (comb_vals['TP'][i] + comb_vals['FN'][i])
+                    for i in range(0, len(comb_vals['TN']))
             ],
             '-', 
             color='m', 
             label='Combined weighted caller'
     )
+
     # Original callers scatter plot
-    original = ax.scatter(
-            #at_gt['False Positives'], 
-            #at_gt['True Positives'], 
+    axes.scatter(
             at_gt['False Positive Rate'],
             at_gt['True Positive Rate'],
             marker='o', 
@@ -270,9 +266,7 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
             label='Original callers'
     )
     # n or more callers scatter plot
-    ormore = ax.scatter(
-            #at_ormore['False Positives'],
-            #at_ormore['True Positives'],
+    axes.scatter(
             at_ormore['False Positive Rate'],
             at_ormore['True Positive Rate'],
             marker='^',
@@ -281,9 +275,7 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
             label='N or more'
     )
     # Probability callers scatter plot
-    probs = ax.scatter(
-            #at_other['False Positives'],
-            #at_other['True Positives'],
+    axes.scatter(
             at_other['False Positive Rate'],
             at_other['True Positive Rate'],
             marker='*',
@@ -291,19 +283,17 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
             s=100,
             label='Weighted caller cutoff'
     )
+
+    pyplot.ylim(ymin=0)
+    pyplot.xlim(xmin=0)
+    pyplot.legend(loc=4)
     # Point labels
     annotations = []
     for x, y, caller in zip(
-            #at['False Positives'], at['True Positives'], callers
             at['False Positive Rate'], at['True Positive Rate'], callers
     ):
         annotations.append(pyplot.text(x, y, caller))
-    adjust_text(annotations, only_move='y')
-
-    #pyplot.ylim(ymin=0, ymax=(weight_vals['TP'][0]+weight_vals['FN'][0] + 10))
-    pyplot.ylim(ymin=0, ymax=1)
-    pyplot.xlim(xmin=0)
-    pyplot.legend(loc=4)
+    adjust_text(annotations, arrowprops=dict(arrowstyle="-", color='r', lw=0.5))
 
     pyplot.show()
 
