@@ -67,14 +67,11 @@ else:
             i for i in range(0, df.shape[0])
             if df['COVERED'][i] or df['REPORTABLE'][i]
     ]].reset_index(drop=True)
-    # Add combined callers to df
-    print('Adding combined callers...')
-    for caller in callers:
-        print(caller)
-        caller.add_caller(df)
-    #analysis.add_x_or_more(df)
     training = covered[int(covered.shape[0] / 2):].reset_index(drop=True)
-    print(covered.shape[0])
+    # Add joint callers to df
+    print('Adding joint callers...')
+    for caller in callers:
+        caller.add_caller(df, training)
 
     # Generate probability combined caller
     prob_cutoffs = numpy.arange(0, 1, 0.01)
@@ -92,25 +89,6 @@ else:
     ][-1]]
     print('Combined cutoff: ' + str(prob_cutoff))
     analysis.add_prob_caller(prob_cutoff, df)
-
-    # Generate weights combined caller by calculating optimum cutoff
-    weights = analysis.get_caller_weights(df)
-    print(weights)
-    weight_cutoffs = numpy.arange(0, sum(weights), 0.01)
-    weight_vals = analysis.weight_fn(weight_cutoffs, training, weights)
-    weight_ratios = [
-            analysis.get_mcc(
-                    weight_vals['TP'][i], weight_vals['TN'][i],
-                    weight_vals['FP'][i], weight_vals['FN'][i]
-            )
-            for i in range(0, len(weight_vals['FP']))
-    ]
-    weight_cutoff = weight_cutoffs[[
-            i for i, ratio in enumerate(weight_ratios)
-            if ratio == max(weight_ratios)
-    ][-1]]
-    print('Individual cutoff: ' + str(weight_cutoff))
-    analysis.add_weight_caller(weight_cutoff, df, weights)
     print('Classifying combined calls...')
     parser.classify(df, parser.get_new_caller_names(df))
     print('Creating new tab file...')

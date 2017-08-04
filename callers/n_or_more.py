@@ -3,7 +3,7 @@ import pandas
 import parser
 
 # Add callers which detect variants called by at least x original callers
-def add_caller(df):
+def add_caller(df, training):
     lower = 2
     upper = len(parser.get_og_caller_names(df)) + 1
     for cutoff in range(lower, upper):
