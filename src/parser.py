@@ -8,8 +8,6 @@ import pymongo
 import numpy
 from bson import ObjectId
 
-import analysis
-
 def replace_key(dictionary, new_key, old_key):
     dictionary[new_key] = dictionary[old_key]
     del dictionary[old_key]

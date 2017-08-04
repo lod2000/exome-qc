@@ -5,73 +5,26 @@ import re
 
 import pandas
 import numpy
-#from scipy.optimize import fmin
-#from scipy.optimize import minimize
 import matplotlib.pyplot as pyplot
 from adjustText import adjust_text
-#from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
 import matplotlib
-#from matplotlib.legend_handler import HandlerLine2D
 
-import parser
-
-def get_true_positives(df, caller):
-    return df.iloc[[
-            i for i, call in enumerate(df[caller]) if call == 'TP'
-    ]].reset_index(drop=True)
-
-def get_true_negatives(df, caller):
-    return df.iloc[[
-            i for i, call in enumerate(df[caller]) if call == 'TN'
-    ]].reset_index(drop=True)
-
-def get_false_positives(df, caller):
-    return df.iloc[[
-            i for i, call in enumerate(df[caller]) if call == 'FP'
-    ]].reset_index(drop=True)
-
-def get_false_negatives(df, caller):
-    return df.iloc[[
-            i for i, call in enumerate(df[caller]) if call == 'FN'
-    ]].reset_index(drop=True)
-
-def get_unclassified(df, caller_name):
-    return df.iloc[[
-            i for i, call in enumerate(df[caller])
-            if call == 'UP' or call == 'UN'
-    ]].reset_index(drop=True)
-
-def get_accuracy(tp, tn, fp, fn):
-    return (tp + tn) / (tp + tn + fp + fn)
-
-# Matthews Correlation Coefficient
-def get_mcc(tp, tn, fp, fn):
-    return ((tp * tn - fp * fn)
-                / math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)))
+import utils
 
 # Counts only variants marked 'positive' by specific callers and 'negative' by
 # all other callers.
 def comb_callers(df, select_callers):
-    all_callers = parser.get_og_caller_names(df)
+    all_callers = utils.get_og_callers(df)
     tps = df
     fps = df
     for caller in all_callers:
         if caller in select_callers:
-            tps = get_true_positives(tps, caller)
-            fps = get_false_positives(fps, caller)
+            tps = utils.get_tp(tps, caller)
+            fps = utils.get_fp(fps, caller)
         else:
-            tps = get_false_negatives(tps, caller)
-            fps = get_true_negatives(fps, caller)
+            tps = utils.get_fn(tps, caller)
+            fps = utils.get_tn(fps, caller)
     return {'TP': tps.shape[0], 'FP': fps.shape[0]}
-
-# The probability that a variant is real given that it has been called.
-# Bayes' rule: P(A|B) = P(B|A) * P(A) / P(B)
-def p_real_given_called(tp, fp, reportables, covered):
-    p_called_given_real = tp / reportables
-    p_real = reportables / covered
-    p_called = (tp + fp) / covered
-    p_real_given_called = p_called_given_real * p_real / p_called
-    return p_real_given_called
 
 # Returns a dict of probabilities that a variant is real for all possible
 # combinations of callers. Gives a value 0 to any combination not found in the
@@ -86,7 +39,7 @@ def get_caller_comb_probs(df):
             i for i in range(0, df.shape[0])
             if df['REPORTABLE'][i] or df['COVERED'][i]
     ])
-    callers = parser.get_og_caller_names(df)
+    callers = utils.get_og_callers(df)
     weights = {}
     for k in range(1, len(callers) + 1):
         for subset in itertools.combinations(callers, k):
@@ -94,7 +47,7 @@ def get_caller_comb_probs(df):
             comb = comb_callers(df, sublist)
             called = comb['TP'] + comb['FP']
             if called > 0:
-                weights['&'.join(sublist)] = p_real_given_called(
+                weights['&'.join(sublist)] = utils.p_real_given_called(
                         comb['TP'], comb['FP'], reportables, covered
                 )
             else:
@@ -106,7 +59,7 @@ def get_caller_comb_probs(df):
 # the probability of a particular combination of callers, with the true/false
 # cutoff as the dependent variable
 def prob_fn(cutoffs, df):
-    callers = parser.get_og_caller_names(df)
+    callers = utils.get_og_callers(df)
     probs = get_caller_comb_probs(df)
     nps = [[
             'P'
@@ -125,7 +78,7 @@ def prob_fn(cutoffs, df):
 
 # Add a caller based on the probability of a particular combination of callers
 def add_prob_caller(cutoff, df):
-    callers = parser.get_og_caller_names(df)
+    callers = utils.get_og_callers(df)
     probs = get_caller_comb_probs(df)
     df['JOINT_COMB'] = [
             True 
@@ -135,21 +88,21 @@ def add_prob_caller(cutoff, df):
 
 # Returns the probabilities of individual callers predicting a reportable variant
 def get_caller_weights(df):
-    callers = parser.get_og_caller_names(df)
+    callers = utils.get_og_callers(df)
     weights = []
     for caller in callers:
-        tp = get_true_positives(df, caller).shape[0]
-        fp = get_false_positives(df, caller).shape[0]
-        tn = get_true_negatives(df, caller).shape[0]
-        fn = get_false_negatives(df, caller).shape[0]
+        tp = utils.get_tp(df, caller).shape[0]
+        fp = utils.get_fp(df, caller).shape[0]
+        tn = utils.get_tn(df, caller).shape[0]
+        fn = utils.get_fn(df, caller).shape[0]
         all_calls = tp + fp + tn + fn
-        weights.append(p_real_given_called(tp, fp, tp + fn, all_calls))
+        weights.append(utils.p_real_given_called(tp, fp, tp + fn, all_calls))
     return weights
 
 # Returns true positive and false positive variants based on individual caller
 # probabilities, with the cutoff as the dependent variable
 def weight_fn(cutoffs, cov, weights):
-    callers = parser.get_og_caller_names(cov)
+    callers = utils.get_og_callers(cov)
     nps = [[
             'P' if sum([
                     weight for k, weight in enumerate(weights) 
@@ -169,7 +122,7 @@ def weight_fn(cutoffs, cov, weights):
 # Add a caller based on the probability of an individual caller correctly
 # finding a reportable variant
 def add_weight_caller(cutoff, df, weights):
-    callers = parser.get_og_caller_names(df)
+    callers = utils.get_og_callers(df)
     df['JOINT_INDIV'] = [
             True if sum([
                     weight for k, weight in enumerate(weights) 
@@ -179,7 +132,7 @@ def add_weight_caller(cutoff, df, weights):
 
 # Add callers which detect variants called by at least x original callers
 def add_x_or_more(df):
-    for cutoff in range(2, len(parser.get_og_caller_names(df)) + 1):
+    for cutoff in range(2, len(utils.get_og_callers(df)) + 1):
         name = 'JOINT_' + str(cutoff) + 'ORMORE'
         df[name] = [
                 True if callers >= cutoff else './.'
@@ -311,16 +264,16 @@ def analyze_callers(df, panel):
     })
 
     print('Analyzing callers...')
-    callers = parser.get_caller_names(df)
+    callers = utils.get_all_callers(df)
     for caller in callers:
         # True positives DataFrame
-        tp_df = get_true_positives(df, caller)
+        tp_df = utils.get_tp(df, caller)
         # False positives DataFrame
-        fp_df = get_false_positives(df, caller)
+        fp_df = utils.get_fp(df, caller)
         # True negatives in DataFrame
-        tn_df = get_true_negatives(df, caller)
+        tn_df = utils.get_tn(df, caller)
         # False negatives DataFrame
-        fn_df = get_false_negatives(df, caller)
+        fn_df = utils.get_fn(df, caller)
 
         # Count rows in DataFrames
         tp = tp_df.shape[0]

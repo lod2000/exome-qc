@@ -7,6 +7,7 @@ import re
 import pandas
 import numpy
 
+import utils
 import parser
 import analysis
 
@@ -90,7 +91,7 @@ else:
     print('Combined cutoff: ' + str(prob_cutoff))
     analysis.add_prob_caller(prob_cutoff, df)
     print('Classifying combined calls...')
-    parser.classify(df, parser.get_new_caller_names(df))
+    parser.classify(df, utils.get_joint_callers(df))
     print('Creating new tab file...')
     df.to_csv(
             os.path.join(output_dir, 'parsed_combined.tab'), sep='\t', 
