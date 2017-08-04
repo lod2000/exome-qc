@@ -16,9 +16,17 @@ def get_indiv_weights(df):
         weights[caller] = utils.p_real_given_called(tp, fp, tp + fn, all_calls)
     return weights
 
+def get_calls(df, weights, cutoff, true_str, false_str):
+    callers = utils.get_og_callers(df)
+    return [true_str if sum([
+                    weights[caller] for caller in callers
+                    if df[caller][i][1] == 'P'
+            ]) > cutoff else false_str for i in range(0, df.shape[0])
+    ]
+
 # Returns true positive and false positive variants based on individual caller
 # probabilities, with the cutoff as the dependent variable
-def weight_fn(df, weights, cutoffs):
+def get_roc(df, weights, cutoffs):
     callers = utils.get_og_callers(df)
     nps = [get_calls(df, weights, cutoff, 'P', 'N') for cutoff in cutoffs]
     statuses = [[
@@ -31,24 +39,18 @@ def weight_fn(df, weights, cutoffs):
     fn = [len([s for s in status if s == 'FN']) for status in statuses]
     return {'TP': tp, 'FP': fp, 'TN': tn, 'FN': fn}
 
-def get_calls(df, weights, cutoff, true_str, false_str):
-    callers = utils.get_og_callers(df)
-    return [true_str if sum([
-                    weights[caller] for caller in callers
-                    if df[caller][i][1] == 'P'
-            ]) > cutoff else false_str for i in range(0, df.shape[0])
-    ]
-
 # Add a caller based on the probability of an individual caller correctly
 # finding a reportable variant
 def add_caller(df, training):
+    name = 'JOINT_INDIV'
+    print('Adding ' + name + '...')
     callers = utils.get_og_callers(df)
     weights = get_indiv_weights(training)
     cutoffs = numpy.arange(0, sum([weights[c] for c in callers]), 0.01)
-    vals = weight_fn(training, weights, cutoffs)
+    vals = get_roc(training, weights, cutoffs)
     mccs = [utils.get_mcc(
             vals['TP'][i], vals['TN'][i], vals['FP'][i], vals['FN'][i]
     ) for i in range(0, len(vals['TP']))]
     cutoff = cutoffs[[i for i, mcc in enumerate(mccs) if mcc == max(mccs)][-1]]
     print('Individual cutoff: ' + str(cutoff))
-    df['JOINT_INDIV'] = get_calls(df, weights, cutoff, True, './.')
+    df[name] = get_calls(df, weights, cutoff, True, './.')

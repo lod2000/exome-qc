@@ -78,7 +78,7 @@ else:
     prob_cutoffs = numpy.arange(0, 1, 0.01)
     prob_vals = analysis.prob_fn(prob_cutoffs, training)
     prob_ratios = [
-            analysis.get_mcc(
+            utils.get_mcc(
                     prob_vals['TP'][i], prob_vals['TN'][i],
                     prob_vals['FP'][i], prob_vals['FN'][i]
             )

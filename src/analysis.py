@@ -2,6 +2,7 @@ import math
 import itertools
 import os
 import re
+import sys
 
 import pandas
 import numpy
@@ -10,6 +11,8 @@ from adjustText import adjust_text
 import matplotlib
 
 import utils
+sys.path.append(os.path.join(sys.path[0], '..', 'callers'))
+import indiv_weighted
 
 # Counts only variants marked 'positive' by specific callers and 'negative' by
 # all other callers.
@@ -86,59 +89,6 @@ def add_prob_caller(cutoff, df):
             else './.' for i in range(0, df.shape[0])
     ]
 
-# Returns the probabilities of individual callers predicting a reportable variant
-def get_caller_weights(df):
-    callers = utils.get_og_callers(df)
-    weights = []
-    for caller in callers:
-        tp = utils.get_tp(df, caller).shape[0]
-        fp = utils.get_fp(df, caller).shape[0]
-        tn = utils.get_tn(df, caller).shape[0]
-        fn = utils.get_fn(df, caller).shape[0]
-        all_calls = tp + fp + tn + fn
-        weights.append(utils.p_real_given_called(tp, fp, tp + fn, all_calls))
-    return weights
-
-# Returns true positive and false positive variants based on individual caller
-# probabilities, with the cutoff as the dependent variable
-def weight_fn(cutoffs, cov, weights):
-    callers = utils.get_og_callers(cov)
-    nps = [[
-            'P' if sum([
-                    weight for k, weight in enumerate(weights) 
-                    if cov[callers[k]][i][1] == 'P'
-            ]) > cutoff else 'N' for i in range(0, cov.shape[0])
-    ] for cutoff in cutoffs]
-    statuses = [[
-            str((np[i] == 'P') == cov['REPORTABLE'][i])[0] + np[i]
-            for i in range(0, cov.shape[0])
-    ] for np in nps]
-    tp = [len([s for s in status if s == 'TP']) for status in statuses]
-    fp = [len([s for s in status if s == 'FP']) for status in statuses]
-    tn = [len([s for s in status if s == 'TN']) for status in statuses]
-    fn = [len([s for s in status if s == 'FN']) for status in statuses]
-    return {'TP': tp, 'FP': fp, 'TN': tn, 'FN': fn}
-
-# Add a caller based on the probability of an individual caller correctly
-# finding a reportable variant
-def add_weight_caller(cutoff, df, weights):
-    callers = utils.get_og_callers(df)
-    df['JOINT_INDIV'] = [
-            True if sum([
-                    weight for k, weight in enumerate(weights) 
-                    if df[callers[k]][i][1] == 'P'
-            ]) > cutoff else './.' for i in range(0, df.shape[0])
-    ]
-
-# Add callers which detect variants called by at least x original callers
-def add_x_or_more(df):
-    for cutoff in range(2, len(utils.get_og_callers(df)) + 1):
-        name = 'JOINT_' + str(cutoff) + 'ORMORE'
-        df[name] = [
-                True if callers >= cutoff else './.'
-                for callers in df['TOTAL_CALLERS']
-        ]
-
 # Plot false positives vs true positives for all callers
 def plot_callers(df, analysis_df, plots_dir, combined=True):
     matplotlib.rcParams.update({'font.size': 16})
@@ -175,9 +125,10 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
     pyplot.ylabel('True Positive Rate')
 
     # Individual probability caller curve
-    indiv_weights = get_caller_weights(df)
-    indiv_cutoffs = numpy.arange(0, sum(indiv_weights), 0.1)
-    indiv_vals = weight_fn(indiv_cutoffs, covered, indiv_weights)
+    callers = utils.get_og_callers(df)
+    indiv_weights = indiv_weighted.get_indiv_weights(df)
+    indiv_cutoffs = numpy.arange(0, sum([indiv_weights[c] for c in callers]), 0.1)
+    indiv_vals = indiv_weighted.get_roc(covered, indiv_weights, indiv_cutoffs)
     indiv_line = axes.plot(
             # False Positive Rate
             [indiv_vals['FP'][i] / (indiv_vals['FP'][i] + indiv_vals['TN'][i])
@@ -241,6 +192,7 @@ def plot_callers(df, analysis_df, plots_dir, combined=True):
     pyplot.xlim(xmin=0)
     pyplot.legend(loc=4)
     # Point labels
+    callers = [c.split('_')[-1] for c in filter(r.match, list(analysis_df))]
     annotations = []
     for x, y, caller in zip(
             at['False Positive Rate'], at['True Positive Rate'], callers
