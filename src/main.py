@@ -1,6 +1,8 @@
 import os
 import sys
 import glob
+import importlib
+import re
 
 import pandas
 import numpy
@@ -20,6 +22,20 @@ samples_dir = os.path.join(data_path, 'samples')
 df_file = os.path.join(output_dir, 'parsed.tab')
 # Parsed sample file including combined caller
 combined_file = os.path.join(output_dir, 'parsed_combined.tab')
+
+# Import joint caller modules
+callers_dir = os.path.join(main_dir, 'callers')
+sys.path.append(callers_dir)
+caller_names = [
+        caller.split('.py')[0] for caller in os.listdir(callers_dir)
+        if re.search('^[A-Za-z]', caller)
+]
+if len(caller_names) > 0:
+    print('Found mutation caller modules:')
+    print(caller_names)
+    callers = []
+    for i, caller in enumerate(caller_names):
+        callers.append( importlib.import_module(caller))
 
 # Get small panel coverage file
 panel = parser.parse_bed(bed_file)
@@ -53,7 +69,10 @@ else:
     ]].reset_index(drop=True)
     # Add combined callers to df
     print('Adding combined callers...')
-    analysis.add_x_or_more(df)
+    for caller in callers:
+        print(caller)
+        caller.add_caller(df)
+    #analysis.add_x_or_more(df)
     training = covered[int(covered.shape[0] / 2):].reset_index(drop=True)
     print(covered.shape[0])
 
