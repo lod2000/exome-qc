@@ -24,8 +24,6 @@ bed_file = glob.glob(os.path.join(data_path, 'panel', '*.bed'))[0]
 samples_dir = os.path.join(data_path, 'samples')
 # Parsed sample data file path
 df_file = os.path.join(output_dir, 'parsed.tab')
-# Parsed sample file including combined caller
-combined_file = os.path.join(output_dir, 'parsed_combined.tab')
 
 # Import joint caller modules
 print('Importing joint caller modules...')
@@ -45,19 +43,6 @@ if len(caller_names) > 0:
 # Get small panel coverage file
 panel = parser.parse_bed(bed_file)
     
-# Get combined callers
-#if os.path.isfile(combined_file):
-#    print('Reading combined callers data...')
-#    df = pandas.read_csv(combined_file, sep='\t', low_memory=False)
-#    # Convert SAMPLE_IDs to Strings
-#    df['SAMPLE_ID'] = df['SAMPLE_ID'].astype(str)
-#    # Get DataFrame of covered variants
-#    covered = df.iloc[[
-#            i for i in range(0, df.shape[0])
-#            if df['COVERED'][i] or df['REPORTABLE'][i]
-#    ]].reset_index(drop=True)
-#else:
-
 # Read / generate combined data file
 if os.path.isfile(df_file):
     print('Reading parsed samples file...')
@@ -87,11 +72,6 @@ for caller in caller_modules:
 # Analyze combined callers
 print('Classifying combined calls...')
 parser.classify(df, utils.get_joint_callers(df))
-print('Creating new tab file...')
-df.to_csv(
-        os.path.join(output_dir, 'parsed_combined.tab'), sep='\t', 
-        encoding='utf-8', index=False
-)
 
 # Get testing set
 testing_indices = covered_indices[:covered_split]
