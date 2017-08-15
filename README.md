@@ -36,4 +36,4 @@ Alternately, to generate only the combined data file with no analysis or joint c
 
 ## Output
 
-A tab-delimited file of data from all samples combined will be generated at `data/samples/combined.tab` This will be used if the script is run again, to avoid generating the same large DataFrame multiple times. Also, a CSV with basic analysis of the variant callers will be generated at `data/analysis.csv`.
+A tab-delimited file of data from all samples combined will be generated at `output/combined.tab` This will be used if the script is run again, to avoid generating the same large DataFrame multiple times. Also, a CSV with basic analysis of the variant callers will be generated at `output/analysis.csv`. The script also generates a plot of the different callers. When it pops up, adjust the plot and drag around the labels to the heart's content, then save it as a png.
