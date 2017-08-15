@@ -82,8 +82,6 @@ def get_roc(df):
 
 # Add a caller based on the probability of a particular combination of callers
 def add_caller(df, training):
-    name = 'JOINT_COMB'
-    print('Adding ' + name + '...')
     callers = utils.get_og_callers(df)
     weights = get_comb_weights(training)
     cutoffs = get_cutoffs()
@@ -95,4 +93,4 @@ def add_caller(df, training):
     ]
     cutoff = cutoffs[[i for i, mcc in enumerate(mccs) if mcc == max(mccs)][-1]]
     print('Combined cutoff: ' + str(cutoff))
-    df[name] = get_calls(df, weights, cutoff, True, './.')
+    df[NAME] = get_calls(df, weights, cutoff, True, './.')

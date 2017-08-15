@@ -52,8 +52,6 @@ def get_roc(df):
 # Add a caller based on the probability of an individual caller correctly
 # finding a reportable variant
 def add_caller(df, training):
-    #name = 'JOINT_INDIV'
-    print('Adding ' + NAME + '...')
     callers = utils.get_og_callers(df)
     weights = get_indiv_weights(training)
     cutoffs = get_cutoffs(df)

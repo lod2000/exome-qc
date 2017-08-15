@@ -81,6 +81,7 @@ training = df.iloc[training_indices].reset_index(drop=True)
 # Add joint callers to df
 print('Adding joint callers...')
 for caller in caller_modules:
+    print('Adding ' + caller.NAME + '...')
     caller.add_caller(df, training)
 
 # Analyze combined callers
@@ -140,8 +141,6 @@ for caller in callers:
     analysis_df[caller] = [
             tp, tn, fp, fn, tpr, tnr, ppv, npv, fnr, fpr, fdr, fom, acc, mcc
     ]
-#analysis_df = analysis.analyze_callers(testing, panel)
-#analysis.plot_callers(testing, analysis_df, output_dir)
 analysis_file = os.path.join(output_dir, 'analysis.csv')
 analysis_df.to_csv(
         analysis_file, sep='\t', encoding='utf-8', index=False
