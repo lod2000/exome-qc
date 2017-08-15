@@ -15,7 +15,6 @@ def replace_key(dictionary, new_key, old_key):
     del dictionary[old_key]
 
 # Get DataFrame of variants deemed "reportable" in final mongo database
-# Also outputs to ground_truth.csv
 def get_reportables(db_name):
     # Get mongo database
     # Requires mongorestore to have been run
@@ -34,17 +33,7 @@ def get_reportables(db_name):
     })
     combined = []
     print('Combining final and torrent databases...')
-#    # Set up progress indicator
-#    sys.stdout.write('Parsing mongo database:  0%')
-#    sys.stdout.flush()
     for i, final_doc in enumerate(reportable_cursor):
-#        # Progress indicator
-#        progress = int(100 * (i / reportable_cursor.count()))
-#        if progress < 10:
-#            sys.stdout.write('\b\b' + str(progress) + '%')
-#        else:
-#            sys.stdout.write('\b\b\b' + str(progress) + '%')
-#        sys.stdout.flush()
         torrent_doc = torrent.find_one(final_doc['torrent_result_id'])
         # Generate combined dict of torrent and final information
         try:
@@ -159,7 +148,6 @@ def get_simplified_gt(db_name, output_dir):
             'SAMPLE_PATH': ppmp_annotation_paths,
             'TARGET_ALLELE_COUNT': target_allele_counts,
             'EXAC_FREQ_ESTIMATE': exac_freq_estimates,
-            # '1KG_FREQ_ESTIMATE': nkg_freq_estimates
     })
     # Strip out variants without DNA or protein information
     simple_df = simple_df.iloc[[
@@ -187,7 +175,6 @@ def parse_bed(bed):
     parsed['GENE'] = genes
     return parsed
 
-# TODO does the 'end' position include the last covered position?
 # Returns a DataFrame of individual positions, genes, and chromosomes covered
 def split_panel(panel):
     positions = []
@@ -224,7 +211,6 @@ def find_samples(gt, samples_dir):
             path for i, path in enumerate(gt['SAMPLE_PATH'])
             if path not in list(gt['SAMPLE_PATH'][:i])
     ]
-    #potentials = set(gt['SAMPLE_PATH'])
     finals = []
     for potential in potentials:
         if os.path.isfile(os.path.join(samples_dir, str(potential))):
@@ -376,5 +362,5 @@ if __name__ == "__main__":
     db_name = args.db_name
     bed_file = args.panel_file
     samples_dir = args.directory
-
+    # Generate combined file
     combine(db_name, bed_file, samples_dir)
