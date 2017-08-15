@@ -11,7 +11,7 @@ Before running, make sure your `data` folder looks like this:
 ```
 data/
     ground_truth/
-        <ground-truth>.xlsx
+        ground_truth.csv
     panel/
         <small-panel-coverage>.bed
     samples/
@@ -30,7 +30,7 @@ On Windows:
 
 `src\main.py`
 
-Alternately, to generate only the combined data file with no analysis:
+Alternately, to generate only the combined data file with no analysis or joint callers:
 
 `python src/sample_parser.py <ground-truth.xlsx> <small-panel.bed> <tab-archive>`
 
