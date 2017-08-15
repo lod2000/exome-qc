@@ -8,8 +8,6 @@ import pymongo
 import numpy
 from bson import ObjectId
 
-import analysis
-
 def replace_key(dictionary, new_key, old_key):
     dictionary[new_key] = dictionary[old_key]
     del dictionary[old_key]
@@ -250,6 +248,7 @@ def combine_samples(samples_dir, sample_paths):
     df = pandas.concat(df_list).reset_index(drop=True)
     return df
 
+# Find true and false positives and negatives
 def classify(df, callers):
     for caller in callers:
         print(caller)
