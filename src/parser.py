@@ -205,6 +205,7 @@ def get_caller_names(sample):
 # Returns list of sample paths from ground truth that are in data/samples
 def find_samples(gt, samples_dir):
     samples = next(os.walk(samples_dir))[1]
+    # TODO use set?
     potentials = [
             path for i, path in enumerate(gt['SAMPLE_PATH'])
             if path not in list(gt['SAMPLE_PATH'][:i])
@@ -254,6 +255,7 @@ def classify(df, callers):
         print(caller)
         np = ['N' if call == './.' else 'P' for call in df[caller]]
         df[caller] = [
+                #TODO comment this section
                 str((np[i] == 'P') == df['REPORTABLE'][i])[0] + np[i] 
                 if (df['COVERED'][i] or df['REPORTABLE'][i]) else 'U' + np[i]
                 for i in range(0, df.shape[0])
@@ -273,6 +275,7 @@ def combine(db_name, bed_file, samples_dir):
         gt['SAMPLE_ID'] = gt['SAMPLE_ID'].astype(str)
     else:
         # Parse ground truth DataFrame from mongo database
+        # TODO use gt_file, not gt_dir
         gt = get_simplified_gt(db_name, gt_dir)
     # Parse .bed file
     bed = parse_bed(bed_file)

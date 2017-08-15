@@ -100,13 +100,5 @@ ENV/
 # mypy
 .mypy_cache/
 
-# exome data
-data/samples/**
-data/ground_truth/*
-output/*
-
 # vim
 *.swp
-
-# R stuff
-data/.Rhistory
