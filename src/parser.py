@@ -66,7 +66,7 @@ def get_reportables(db_name):
 
 # Simplify reportable ground truth data to contain only relevant information
 # Also outputs to ground_truth.csv
-def get_simplified_gt(db_name, gt_dir):
+def get_simplified_gt(db_name, gt_file):
     df = get_reportables(db_name)
     print('Generating simplified data frame...')
     # Remove MiSeq entries
@@ -156,10 +156,7 @@ def get_simplified_gt(db_name, gt_dir):
             path.split(os.sep)[0] for path in simple_df['SAMPLE_PATH']
     ]
     # Output CSV
-    simple_df.to_csv(
-            os.path.join(gt_dir, 'ground_truth.csv'),
-            sep='\t', encoding='utf8', index=False
-    )
+    simple_df.to_csv(gt_file, sep='\t', encoding='utf8', index=False)
     return simple_df
 
 def parse_bed(bed):
@@ -265,8 +262,7 @@ def combine(db_name, bed_file, samples_dir):
     # File system
     main_dir = os.path.abspath(os.path.join(sys.path[0], '..'))
     output_dir = os.path.join(main_dir, 'output')
-    gt_dir = os.path.join(main_dir, 'data', 'ground_truth')
-    gt_file = os.path.join(gt_dir, 'ground_truth.csv')
+    gt_file = os.path.join(main_dir, 'data', 'ground_truth', 'ground_truth.csv')
 
     # Get ground truth
     if os.path.isfile(gt_file):
@@ -275,8 +271,7 @@ def combine(db_name, bed_file, samples_dir):
         gt['SAMPLE_ID'] = gt['SAMPLE_ID'].astype(str)
     else:
         # Parse ground truth DataFrame from mongo database
-        # TODO use gt_file, not gt_dir
-        gt = get_simplified_gt(db_name, gt_dir)
+        gt = get_simplified_gt(db_name, gt_file)
     # Parse .bed file
     bed = parse_bed(bed_file)
     print('Finding matching samples...')
