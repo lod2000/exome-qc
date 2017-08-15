@@ -2,7 +2,7 @@
 
 ## Install necessary libraries
 
-`sudo pip install pandas xlrd scipy`
+`sudo pip install pandas pymongo matplotlib adjustText`
 
 ## Data structure
 
