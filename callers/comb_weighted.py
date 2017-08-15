@@ -1,7 +1,11 @@
+import itertools
+
 import numpy
 import pandas
 
 import utils
+
+NAME='JOINT_COMB'
 
 # Counts only variants marked 'positive' by specific callers and 'negative' by
 # all other callers.
@@ -48,27 +52,28 @@ def get_comb_weights(df):
     return weights
 
 def get_calls(df, weights, cutoff, true_str, false_str):
-    return [true_str if probs[
+    callers = utils.get_og_callers(df)
+    return [true_str if weights[
                     '&'.join([c for c in callers if df[c][i][1] == 'P'])
             ] > cutoff else false_str for i in range(0, df.shape[0])
     ]
 
+def get_cutoffs():
+    cutoffs = numpy.arange(0, 1, 0.01)
+    return cutoffs
+
 # Function to return the number of true positives and false positives based on
 # the probability of a particular combination of callers, with the true/false
 # cutoff as the dependent variable
-def get_roc(cutoffs, df):
+def get_roc(df):
     callers = utils.get_og_callers(df)
-    probs = get_comb_weights(df)
+    weights = get_comb_weights(df)
+    cutoffs = get_cutoffs()
     calls = [get_calls(df, weights, cutoff, 'P', 'N') for cutoff in cutoffs]
-    #nps = [[
-    #        'P'
-    #        if probs['&'.join([c for c in callers if df[c][i][1] == 'P'])] > cutoff
-    #        else 'N' for i in range(0, df.shape[0])
-    #] for cutoff in cutoffs]
     statuses = [[
-            str((np[i] == 'P') == df['REPORTABLE'][i])[0] + np[i]
+            str((call[i] == 'P') == df['REPORTABLE'][i])[0] + call[i]
             for i in range(0, df.shape[0])
-    ] for np in nps]
+    ] for call in calls]
     tp = [len([s for s in status if s == 'TP']) for status in statuses]
     fp = [len([s for s in status if s == 'FP']) for status in statuses]
     tn = [len([s for s in status if s == 'TN']) for status in statuses]
@@ -76,15 +81,18 @@ def get_roc(cutoffs, df):
     return {'TP': tp, 'FP': fp, 'TN': tn, 'FN': fn}
 
 # Add a caller based on the probability of a particular combination of callers
-def add_prob_caller(df, training):
+def add_caller(df, training):
     name = 'JOINT_COMB'
     print('Adding ' + name + '...')
     callers = utils.get_og_callers(df)
     weights = get_comb_weights(training)
-    cutoffs = numpy.arange(0, 1, 0.01)
-    vals = get_roc(training, weights, cutoffs)
-    df['JOINT_COMB'] = [
-            True 
-            if probs['&'.join([c for c in callers if df[c][i][1] == 'P'])] > cutoff
-            else './.' for i in range(0, df.shape[0])
+    cutoffs = get_cutoffs()
+    vals = get_roc(training)
+    mccs = [
+            utils.get_mcc(
+                    vals['TP'][i], vals['TN'][i], vals['FP'][i], vals['FN'][i]
+            ) for i in range(0, len(vals['TP']))
     ]
+    cutoff = cutoffs[[i for i, mcc in enumerate(mccs) if mcc == max(mccs)][-1]]
+    print('Combined cutoff: ' + str(cutoff))
+    df[name] = get_calls(df, weights, cutoff, True, './.')

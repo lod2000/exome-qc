@@ -3,6 +3,8 @@ import pandas
 
 import utils
 
+NAME = 'JOINT_INDIV'
+
 # Returns the probabilities of individual callers predicting a reportable variant
 def get_indiv_weights(df):
     callers = utils.get_og_callers(df)
@@ -24,15 +26,23 @@ def get_calls(df, weights, cutoff, true_str, false_str):
             ]) > cutoff else false_str for i in range(0, df.shape[0])
     ]
 
+def get_cutoffs(df):
+    callers = utils.get_og_callers(df)
+    weights = get_indiv_weights(df)
+    cutoffs = numpy.arange(0, sum([weights[c] for c in callers]), 0.01)
+    return cutoffs
+
 # Returns true positive and false positive variants based on individual caller
 # probabilities, with the cutoff as the dependent variable
-def get_roc(df, weights, cutoffs):
+def get_roc(df):
     callers = utils.get_og_callers(df)
-    nps = [get_calls(df, weights, cutoff, 'P', 'N') for cutoff in cutoffs]
+    weights = get_indiv_weights(df)
+    cutoffs = get_cutoffs(df)
+    calls = [get_calls(df, weights, cutoff, 'P', 'N') for cutoff in cutoffs]
     statuses = [[
-            str((np[i] == 'P') == df['REPORTABLE'][i])[0] + np[i]
+            str((call[i] == 'P') == df['REPORTABLE'][i])[0] + call[i]
             for i in range(0, df.shape[0])
-    ] for np in nps]
+    ] for call in calls]
     tp = [len([s for s in status if s == 'TP']) for status in statuses]
     fp = [len([s for s in status if s == 'FP']) for status in statuses]
     tn = [len([s for s in status if s == 'TN']) for status in statuses]
@@ -42,15 +52,17 @@ def get_roc(df, weights, cutoffs):
 # Add a caller based on the probability of an individual caller correctly
 # finding a reportable variant
 def add_caller(df, training):
-    name = 'JOINT_INDIV'
-    print('Adding ' + name + '...')
+    #name = 'JOINT_INDIV'
+    print('Adding ' + NAME + '...')
     callers = utils.get_og_callers(df)
     weights = get_indiv_weights(training)
-    cutoffs = numpy.arange(0, sum([weights[c] for c in callers]), 0.01)
-    vals = get_roc(training, weights, cutoffs)
-    mccs = [utils.get_mcc(
-            vals['TP'][i], vals['TN'][i], vals['FP'][i], vals['FN'][i]
-    ) for i in range(0, len(vals['TP']))]
+    cutoffs = get_cutoffs(df)
+    vals = get_roc(training)
+    mccs = [
+            utils.get_mcc(
+                    vals['TP'][i], vals['TN'][i], vals['FP'][i], vals['FN'][i]
+            ) for i in range(0, len(vals['TP']))
+    ]
     cutoff = cutoffs[[i for i, mcc in enumerate(mccs) if mcc == max(mccs)][-1]]
     print('Individual cutoff: ' + str(cutoff))
-    df[name] = get_calls(df, weights, cutoff, True, './.')
+    df[NAME] = get_calls(df, weights, cutoff, True, './.')
