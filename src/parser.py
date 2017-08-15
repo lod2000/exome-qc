@@ -262,6 +262,7 @@ def classify(df, callers):
 def combine(db_name, bed_file, samples_dir):
     # File system
     main_dir = os.path.abspath(os.path.join(sys.path[0], '..'))
+    output_dir = os.path.join(main_dir, 'output')
     gt_dir = os.path.join(main_dir, 'data', 'ground_truth')
     gt_file = os.path.join(gt_dir, 'ground_truth.csv')
 
@@ -330,10 +331,10 @@ def combine(db_name, bed_file, samples_dir):
 
     # Create parsed tab file
     df.to_csv(
-            os.path.join(gt_dir, 'parsed.tab'), sep='\t',
+            os.path.join(output_dir, 'parsed.tab'), sep='\t',
             encoding='utf-8', index=False
     )
-    print('Output to file ' + os.path.join(gt_dir, 'parsed.tab'))
+    print('Output to file ' + os.path.join(output_dir, 'parsed.tab'))
     return df
 
 if __name__ == "__main__":
