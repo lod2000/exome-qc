@@ -15,10 +15,10 @@ def replace_key(dictionary, new_key, old_key):
     del dictionary[old_key]
 
 # Get DataFrame of variants deemed "reportable" in final mongo database
-def get_reportables(db_name):
+def get_reportables(db_name, hostname):
     # Get mongo database
     # Requires mongorestore to have been run
-    client = pymongo.MongoClient()
+    client = pymongo.MongoClient(hostname)
     db = client[db_name]
     # Mongo collections
     final = db.mongo_final.final_results
@@ -68,8 +68,8 @@ def get_reportables(db_name):
 
 # Simplify reportable ground truth data to contain only relevant information
 # Also outputs to ground_truth.csv
-def get_simplified_gt(db_name, gt_file):
-    df = get_reportables(db_name)
+def get_simplified_gt(db_name, hostname, gt_file):
+    df = get_reportables(db_name, hostname)
     print('Generating simplified data frame...')
     # Remove MiSeq entries
     df = df.iloc[[i for i, miseq in enumerate(df['miseq_run']) if not miseq]]    
@@ -256,7 +256,7 @@ def classify(df, callers):
                 for i in range(0, df.shape[0])
         ]
 
-def combine(db_name, bed_file, samples_dir):
+def combine(db_name, hostname, bed_file, samples_dir):
     # File system
     main_dir = os.path.abspath(os.path.join(sys.path[0], '..'))
     output_dir = os.path.join(main_dir, 'output')
@@ -269,7 +269,7 @@ def combine(db_name, bed_file, samples_dir):
         gt['SAMPLE_ID'] = gt['SAMPLE_ID'].astype(str)
     else:
         # Parse ground truth DataFrame from mongo database
-        gt = get_simplified_gt(db_name, gt_file)
+        gt = get_simplified_gt(db_name, hostname, gt_file)
     # Parse .bed file
     bed = parse_bed(bed_file)
     print('Finding matching samples...')

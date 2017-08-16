@@ -15,6 +15,11 @@ from adjustText import adjust_text
 import utils
 import parser
 
+# Change these if needed
+#db_name = '2017-06-30_NgsReviewer_master'
+db_name = 'NgsReviewer'
+hostname = '172.17.0.9'
+
 # Directory structure
 main_dir = os.path.abspath(os.path.join(sys.path[0], '..'))
 output_dir = os.path.join(main_dir, 'output')
@@ -52,7 +57,7 @@ if os.path.isfile(df_file):
     # Convert SAMPLE_IDs to Strings
     df['SAMPLE_ID'] = df['SAMPLE_ID'].astype(str)
 else:
-    df = parser.combine('2017-06-30_NgsReviewer_master', bed_file, samples_dir)
+    df = parser.combine(db_name, hostname, bed_file, samples_dir)
 
 # Get indices of covered variants
 print('Splitting training and testing sets...')
@@ -202,4 +207,5 @@ for x, y, caller in zip(
 adjust_text(annotations, arrowprops=dict(arrowstyle="-", color='r', lw=0.5))
 
 #pyplot.show()
-pyplot.savefig(os.path.join(output_dir, 'plot.png'), bbox_inches='tight', dpi=220)
+pyplot.set_size_inches(10, 10)
+pyplot.savefig(os.path.join(output_dir, 'plot.png'), bbox_inches='tight')
