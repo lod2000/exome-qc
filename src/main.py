@@ -200,4 +200,5 @@ for x, y, caller in zip(
     annotations.append(pyplot.text(x, y, caller))
 adjust_text(annotations, arrowprops=dict(arrowstyle="-", color='r', lw=0.5))
 
-pyplot.show()
+#pyplot.show()
+pyplot.savefig(os.path.join(output_dir, 'plot.png'), bbox_inches='tight')
