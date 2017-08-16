@@ -7,8 +7,9 @@ import math
 
 import pandas
 import numpy
-import matplotlib.pyplot as pyplot
 import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as pyplot
 from adjustText import adjust_text
 
 import utils
@@ -145,7 +146,7 @@ at_joint = at.iloc[[
 ]]
 
 # Plot params
-matplotlib.rcParams.update({'font.size': 16})
+matplotlib.rcParams.update({'font.size': 10})
 figure, axes = pyplot.subplots()
 pyplot.title('Mutation Caller ROC')
 pyplot.xlabel('False Positive Rate')
@@ -201,4 +202,4 @@ for x, y, caller in zip(
 adjust_text(annotations, arrowprops=dict(arrowstyle="-", color='r', lw=0.5))
 
 #pyplot.show()
-pyplot.savefig(os.path.join(output_dir, 'plot.png'), bbox_inches='tight')
+pyplot.savefig(os.path.join(output_dir, 'plot.png'), bbox_inches='tight', dpi=220)
