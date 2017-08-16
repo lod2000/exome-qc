@@ -207,5 +207,5 @@ for x, y, caller in zip(
 adjust_text(annotations, arrowprops=dict(arrowstyle="-", color='r', lw=0.5))
 
 #pyplot.show()
-pyplot.set_size_inches(10, 10)
+figure.set_size_inches(10, 10)
 pyplot.savefig(os.path.join(output_dir, 'plot.png'), bbox_inches='tight')
