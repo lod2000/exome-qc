@@ -8,6 +8,8 @@ import pymongo
 import numpy
 from bson import ObjectId
 
+import utils
+
 def replace_key(dictionary, new_key, old_key):
     dictionary[new_key] = dictionary[old_key]
     del dictionary[old_key]
@@ -186,19 +188,6 @@ def split_panel(panel):
             'CHROMOSOME' : chromosomes
     }).reset_index(drop=True)
 
-# Returns the names of the variant callers
-def get_og_caller_names(sample):
-    headers = list(sample)
-    return [h for h in headers if re.search('^GT_', h)]
-
-def get_new_caller_names(df):
-    headers = list(df)
-    return [h for h in headers if re.search('^JOINT_', h)]
-
-def get_caller_names(sample):
-    headers = list(sample)
-    return [h for h in headers if re.search('^GT_', h) or re.search('^JOINT_', h)]
-
 # Returns list of sample paths from ground truth that are in data/samples
 def find_samples(gt, samples_dir):
     samples = next(os.walk(samples_dir))[1]
@@ -207,6 +196,13 @@ def find_samples(gt, samples_dir):
             path for i, path in enumerate(gt['SAMPLE_PATH'])
             if path not in list(gt['SAMPLE_PATH'][:i])
     ]
+    print('List:')
+    print(potentials)
+    print(len(potentials))
+    #potentials = list(set(gt['SAMPLE_PATH']))
+    #print('Set:')
+    #print(potentials)
+    #print(len(potentials))
     finals = []
     for potential in potentials:
         if os.path.isfile(os.path.join(samples_dir, str(potential))):
@@ -223,13 +219,12 @@ def combine_samples(samples_dir, sample_paths):
         # Import sample CSV
         sample_df = pandas.read_csv(tab_path, sep='\t')
         # Get variant caller names
-        caller_names = get_caller_names(sample_df)
+        caller_names = utils.get_og_callers(sample_df)
         # List of columns to keep
         col_list = [
                 'CHROMOSOME', 'POSITION', 'TOTAL_CALLERS',
                 'SNPEFF_ANNOTATED_GENE', 'SNPEFF_ANNOTATED_DNA_CHANGE',
                 'SNPEFF_ANNOTATED_PROTEIN_CHANGE', 'EXAC_FREQ_ESTIMATE',
-                # '1KG_FREQ_ESTIMATE', 
                 'TARGET_ALLELE_COUNT', 'TOTAL_READS'
         ] + caller_names
         # New sample DataFrame with relevant columns only
@@ -250,9 +245,19 @@ def combine_samples(samples_dir, sample_paths):
 def classify(df, callers):
     for caller in callers:
         print(caller)
+        # Change call to 'N' if negative or 'P' if positive hit
         np = ['N' if call == './.' else 'P' for call in df[caller]]
         df[caller] = [
-                #TODO comment this section
+                # TP = positive and reportable
+                # FP = positive, not reportable, covered
+                # TN = negative, not reportable, covered,
+                # FN = negative, reportable
+                # UP or UN = unclassified positive or negative
+                #######
+                # Example: 'N', reportable, covered
+                # (np[i] == 'P') is False and df['REPORTABLE'][i] is True
+                # (False == True) is False, so str(False)[0] is 'F'
+                # 'F' + 'N' is 'FN'
                 str((np[i] == 'P') == df['REPORTABLE'][i])[0] + np[i] 
                 if (df['COVERED'][i] or df['REPORTABLE'][i]) else 'U' + np[i]
                 for i in range(0, df.shape[0])
@@ -288,7 +293,7 @@ def combine(db_name, bed_file, samples_dir):
     df = combine_samples(samples_dir, sample_paths).reset_index(drop=True)
     print('Adding combined callers...')
     # List of variant caller names
-    callers = get_og_caller_names(df)
+    callers = utils.get_og_callers(df)
 
     # Find variants in gt not found by any caller
     print('Finding false negatives...')
@@ -325,7 +330,7 @@ def combine(db_name, bed_file, samples_dir):
 
     # Classify calls (TP, FN, etc.)
     print('Classifying calls...')
-    classify(df, get_og_caller_names(df))
+    classify(df, utils.get_og_callers(df))
 
     # Create parsed tab file
     df.to_csv(
