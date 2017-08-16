@@ -26,13 +26,7 @@ data/
 
 ## Run
 
-On Mac or Linux:
-
 `$ python src/main.py` (or `python3 src/main.py`)
-
-On Windows:
-
-`# src\main.py`
 
 Alternately, to generate only the combined data file with no analysis or joint callers:
 
