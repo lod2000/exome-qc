@@ -40,4 +40,20 @@ A tab-delimited file of data from all samples combined will be generated at `out
 
 ## Additional callers
 
-Joint callers can be easily added by creating a script and dropping it in the `callers` directory. Make sure the script follows the format shown in `indiv_weighted.py`, and everything should run smoothly.
+Joint callers can be easily added by creating a script and dropping it in the `callers` directory. Make sure the script follows the format below (see modules already provided for more details), and everything should run smoothly.
+
+### Format
+
+Every caller module should look something like this:
+
+```
+NAME = 'JOINT_EXAMPLE'
+
+def get_roc(df): # Only necessary for callers with different possible cutoff values
+    ...
+    return {'TP': true_pos, 'FP': false_pos, 'TN': true_negs, 'FN': false_negs}
+
+def add_caller(df, training): # df is the full sample DataFrame, training is a training subset of df
+    ...
+    df[NAME] = <list of all variant calls>
+```
