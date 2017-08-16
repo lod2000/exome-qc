@@ -55,5 +55,5 @@ def get_roc(df): # Only necessary for callers with different possible cutoff val
 
 def add_caller(df, training): # df is the full sample DataFrame, training is a training subset of df
     ...
-    df[NAME] = <list of all variant calls>
+    df[NAME] = <list of all variant calls> # Formatted such that positives are marked True and negatives are './.'
 ```
