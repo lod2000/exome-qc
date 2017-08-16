@@ -191,18 +191,11 @@ def split_panel(panel):
 # Returns list of sample paths from ground truth that are in data/samples
 def find_samples(gt, samples_dir):
     samples = next(os.walk(samples_dir))[1]
-    # TODO use set?
+    # Remove duplicate sample paths
     potentials = [
             path for i, path in enumerate(gt['SAMPLE_PATH'])
             if path not in list(gt['SAMPLE_PATH'][:i])
     ]
-    print('List:')
-    print(potentials)
-    print(len(potentials))
-    #potentials = list(set(gt['SAMPLE_PATH']))
-    #print('Set:')
-    #print(potentials)
-    #print(len(potentials))
     finals = []
     for potential in potentials:
         if os.path.isfile(os.path.join(samples_dir, str(potential))):
