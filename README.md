@@ -4,7 +4,7 @@
 
 This requires Python 3, so if you run an operating system that uses Python 2 by default, make sure to explicitly run pip3.
 
-`pip install pandas pymongo matplotlib adjustText`
+`$ pip install pandas pymongo matplotlib adjustText`
 
 Also install `python-tk` or `python3-tk` if it isn't already.
 
@@ -28,15 +28,15 @@ data/
 
 On Mac or Linux:
 
-`python src/main.py` (or `python3 src/main.py`)
+`$ python src/main.py` (or `python3 src/main.py`)
 
 On Windows:
 
-`src\main.py`
+`# src\main.py`
 
 Alternately, to generate only the combined data file with no analysis or joint callers:
 
-`python src/sample_parser.py <ground-truth.xlsx> <small-panel.bed> <tab-archive>`
+`$ python src/sample_parser.py <ground-truth.xlsx> <small-panel.bed> <tab-archive>`
 
 ## Output
 
