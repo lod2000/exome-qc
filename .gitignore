@@ -105,3 +105,6 @@ ENV/
 
 # locked files
 .~lock.*
+
+# Profiling
+*.profile

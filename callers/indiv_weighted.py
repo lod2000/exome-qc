@@ -19,13 +19,19 @@ def get_indiv_weights(df):
         weights[caller] = utils.p_real_given_called(tp, fp, tp + fn, all_calls)
     return weights
 
-# Run the caller on all variants
-def get_calls(df, weights, cutoff, true_str, false_str):
+# Returns a list of weights for each variant based on the number of callers
+def get_vals(df, weights):
     callers = utils.get_og_callers(df)
-    return [true_str if sum([
-                    weights[caller] for caller in callers
+    return [sum([weights[caller] for caller in callers 
                     if df[caller][i][1] == 'P'
-            ]) > cutoff else false_str for i in range(0, df.shape[0])
+            ]) for i in range(0, df.shape[0])
+    ]
+
+# Run the caller on all variants
+def get_calls(df, vals, cutoff, true_str, false_str):
+    callers = utils.get_og_callers(df)
+    return [true_str if vals[i] > cutoff else false_str 
+            for i in range(0, df.shape[0])
     ]
 
 # List of cutoffs from 0 to the maximum possible, in increments of 0.01
@@ -44,7 +50,8 @@ def get_roc(df):
     callers = utils.get_og_callers(df)
     weights = get_indiv_weights(df)
     cutoffs = get_cutoffs(df)
-    calls = [get_calls(df, weights, cutoff, 'P', 'N') for cutoff in cutoffs]
+    vals = get_vals(df, weights)
+    calls = [get_calls(df, vals, cutoff, 'P', 'N') for cutoff in cutoffs]
     # Determine TP / TN / FP / FN
     statuses = [[
             str((call[i] == 'P') == df['REPORTABLE'][i])[0] + call[i]
@@ -75,4 +82,5 @@ def add_caller(df, training):
     cutoff = cutoffs[[i for i, mcc in enumerate(mccs) if mcc == max(mccs)][-1]]
     print('Individual cutoff: ' + str(cutoff))
     # Add caller
-    df[NAME] = get_calls(df, weights, cutoff, True, './.')
+    weight_vals = get_vals(df, weights)
+    df[NAME] = get_calls(df, weight_vals, cutoff, True, './.')

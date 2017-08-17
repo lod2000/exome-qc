@@ -4,6 +4,7 @@ import glob
 import importlib
 import re
 import math
+import cProfile
 
 import pandas
 import numpy
@@ -14,6 +15,9 @@ from adjustText import adjust_text
 
 import utils
 import parser
+
+#pr = cProfile.Profile()
+#pr.enable()
 
 # Change these if needed
 #db_name = '2017-06-30_NgsReviewer_master'
@@ -209,3 +213,6 @@ adjust_text(annotations, arrowprops=dict(arrowstyle="-", color='r', lw=0.5))
 #pyplot.show()
 figure.set_size_inches(10, 10)
 pyplot.savefig(os.path.join(output_dir, 'plot.png'), bbox_inches='tight')
+
+#pr.disable()
+#pr.print_stats(sort='time')

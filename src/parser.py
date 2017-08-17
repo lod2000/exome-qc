@@ -240,17 +240,17 @@ def classify(df, callers):
         print(caller)
         # Change call to 'N' if negative or 'P' if positive hit
         np = ['N' if call == './.' else 'P' for call in df[caller]]
+        # TP = positive and reportable
+        # FP = positive, not reportable, covered
+        # TN = negative, not reportable, covered,
+        # FN = negative, reportable
+        # UP or UN = unclassified positive or negative
+        #######
+        # Example: 'N', reportable, covered
+        # (np[i] == 'P') is False and df['REPORTABLE'][i] is True
+        # (False == True) is False, so str(False)[0] is 'F'
+        # 'F' + 'N' is 'FN'
         df[caller] = [
-                # TP = positive and reportable
-                # FP = positive, not reportable, covered
-                # TN = negative, not reportable, covered,
-                # FN = negative, reportable
-                # UP or UN = unclassified positive or negative
-                #######
-                # Example: 'N', reportable, covered
-                # (np[i] == 'P') is False and df['REPORTABLE'][i] is True
-                # (False == True) is False, so str(False)[0] is 'F'
-                # 'F' + 'N' is 'FN'
                 str((np[i] == 'P') == df['REPORTABLE'][i])[0] + np[i] 
                 if (df['COVERED'][i] or df['REPORTABLE'][i]) else 'U' + np[i]
                 for i in range(0, df.shape[0])

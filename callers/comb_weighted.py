@@ -51,11 +51,18 @@ def get_comb_weights(df):
     weights[''] = 0.0
     return weights
 
-def get_calls(df, weights, cutoff, true_str, false_str):
+# Returns a list of weights for each variant based on caller combinations
+def get_vals(df, weights):
     callers = utils.get_og_callers(df)
-    return [true_str if weights[
-                    '&'.join([c for c in callers if df[c][i][1] == 'P'])
-            ] > cutoff else false_str for i in range(0, df.shape[0])
+    return [weights['&'.join([c for c in callers if df[c][i][1] == 'P'])]
+            for i in range(0, df.shape[0])
+    ]
+
+# Mark variants true or false based on weight and cutoff point
+def get_calls(df, vals, cutoff, true_str, false_str):
+    callers = utils.get_og_callers(df)
+    return [true_str if vals[i] > cutoff else false_str 
+            for i in range(0, df.shape[0])
     ]
 
 def get_cutoffs():
@@ -69,7 +76,8 @@ def get_roc(df):
     callers = utils.get_og_callers(df)
     weights = get_comb_weights(df)
     cutoffs = get_cutoffs()
-    calls = [get_calls(df, weights, cutoff, 'P', 'N') for cutoff in cutoffs]
+    vals = get_vals(df, weights)
+    calls = [get_calls(df, vals, cutoff, 'P', 'N') for cutoff in cutoffs]
     statuses = [[
             str((call[i] == 'P') == df['REPORTABLE'][i])[0] + call[i]
             for i in range(0, df.shape[0])
@@ -93,4 +101,5 @@ def add_caller(df, training):
     ]
     cutoff = cutoffs[[i for i, mcc in enumerate(mccs) if mcc == max(mccs)][-1]]
     print('Combined cutoff: ' + str(cutoff))
-    df[NAME] = get_calls(df, weights, cutoff, True, './.')
+    weight_vals = get_vals(df, weights)
+    df[NAME] = get_calls(df, weight_vals, cutoff, True, './.')
