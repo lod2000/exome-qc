@@ -16,9 +16,6 @@ from adjustText import adjust_text
 import utils
 import parser
 
-#pr = cProfile.Profile()
-#pr.enable()
-
 # Change these if needed
 #db_name = '2017-06-30_NgsReviewer_master'
 db_name = 'NgsReviewer'
@@ -65,9 +62,12 @@ else:
 
 # Get indices of covered variants
 print('Splitting training and testing sets...')
+df_covered = df['COVERED']
+df_reportable = df['REPORTABLE']
+df_size = df.shape[0]
 covered_indices = [
-        i for i in range(0, df.shape[0])
-        if df['COVERED'][i] or df['REPORTABLE'][i]
+        i for i in range(0, df_size)
+        if df_covered[i] or df_reportable[i]
 ]
 covered_split = int(len(covered_indices) / 2)
 # Get training set
@@ -213,6 +213,3 @@ adjust_text(annotations, arrowprops=dict(arrowstyle="-", color='r', lw=0.5))
 #pyplot.show()
 figure.set_size_inches(10, 10)
 pyplot.savefig(os.path.join(output_dir, 'plot.png'), bbox_inches='tight')
-
-#pr.disable()
-#pr.print_stats(sort='time')

@@ -250,10 +250,13 @@ def classify(df, callers):
         # (np[i] == 'P') is False and df['REPORTABLE'][i] is True
         # (False == True) is False, so str(False)[0] is 'F'
         # 'F' + 'N' is 'FN'
+        reportables = df['REPORTABLE']
+        covereds = df['COVERED']
+        size = df.shape[0]
         df[caller] = [
-                str((np[i] == 'P') == df['REPORTABLE'][i])[0] + np[i] 
-                if (df['COVERED'][i] or df['REPORTABLE'][i]) else 'U' + np[i]
-                for i in range(0, df.shape[0])
+                str((np[i] == 'P') == reportables[i])[0] + np[i] 
+                if (covereds[i] or reportables[i]) else 'U' + np[i]
+                for i in range(0, size)
         ]
 
 def combine(db_name, hostname, bed_file, samples_dir):
@@ -276,8 +279,9 @@ def combine(db_name, hostname, bed_file, samples_dir):
     # Find sample ID matches in the ground truth
     sample_paths = find_samples(gt, samples_dir)
     # Combine ground truth DataFrames
+    gt_sample_paths = gt['SAMPLE_PATH']
     gt = gt.iloc[[
-            i for i, path in enumerate(gt['SAMPLE_PATH']) 
+            i for i, path in enumerate(gt_sample_paths) 
             if path in sample_paths
     ]].reset_index(drop=True)
     del gt['SAMPLE_NAME']

@@ -8,6 +8,7 @@ NAME = 'JOINT_NORMORE'
 def add_caller(df, training):
     lower = 2
     upper = len(utils.get_og_callers(df)) + 1
+    #total_callers = df['TOTAL_CALLERS']
     for cutoff in range(lower, upper):
         name = 'JOINT_' + str(cutoff) + 'ORMORE'
         df[name] = [

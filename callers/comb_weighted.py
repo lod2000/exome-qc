@@ -52,6 +52,7 @@ def get_comb_weights(df):
     return weights
 
 # Returns a list of weights for each variant based on caller combinations
+# TODO this is a big bottleneck
 def get_vals(df, weights):
     callers = utils.get_og_callers(df)
     return [weights['&'.join([c for c in callers if df[c][i][1] == 'P'])]
