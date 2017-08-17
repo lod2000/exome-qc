@@ -39,7 +39,7 @@ def get_comb_weights(df):
     weights = {}
     for k in range(1, len(callers) + 1):
         for subset in itertools.combinations(callers, k):
-            sublist = list(subset)
+            sublist = sorted(list(subset))
             comb = combine_callers(df, sublist)
             called = comb['TP'] + comb['FP']
             if called > 0:
@@ -55,7 +55,7 @@ def get_comb_weights(df):
 # TODO this is a big bottleneck
 def get_vals(df, weights):
     callers = utils.get_og_callers(df)
-    return [weights['&'.join([c for c in callers if df[c][i][1] == 'P'])]
+    return [weights['&'.join(sorted([c for c in callers if df[c][i][1] == 'P']))]
             for i in range(0, df.shape[0])
     ]
 
