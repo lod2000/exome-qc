@@ -29,15 +29,17 @@ def get_fn(df, caller):
             i for i, call in enumerate(df[caller]) if call == 'FN'
     ]].reset_index(drop=True)
 
+# Get variants which are not covered by the small panel
 def get_unclassified(df, caller):
     return df.iloc[[
             i for i, call in enumerate(df[caller]) if call[0] == 'U'
     ]].reset_index(drop=True)
 
+# Returns the accuracy of a caller
 def get_accuracy(tp, tn, fp, fn):
     return (tp + tn) / (tp + tn + fp + fn)
 
-# Matthews Correlation Coefficient
+# Returns the Matthews Correlation Coefficient of a caller
 def get_mcc(tp, tn, fp, fn):
     return ((tp * tn - fp * fn)
                 / math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)))
@@ -51,19 +53,22 @@ def p_real_given_called(tp, fp, reportables, covered):
     p_real_given_called = p_called_given_real * p_real / p_called
     return p_real_given_called
 
-# Returns the names of the variant callers
+# Returns the names of the original variant callers...
 def get_og_callers(df):
     headers = list(df)
     return [h for h in headers if re.search('^GT_', h)]
 
+# ...joint callers...
 def get_joint_callers(df):
     headers = list(df)
     return [h for h in headers if re.search('^JOINT_', h)]
 
+# ...or all callers
 def get_all_callers(sample):
     headers = list(sample)
     return [h for h in headers if re.search('^(GT_|JOINT_)', h)]
 
+# Ask the user a yes or no question
 def query_yes_no(question, default='yes'):
     """
     Ask a yes/no question and return their answer as a boolean

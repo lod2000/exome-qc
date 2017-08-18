@@ -124,10 +124,9 @@ for caller in callers:
     fpr = fp / (fp + tn) # False positive rate (fall-out)
     fdr = fp / (fp + tp) # False discovery rate
     fom = fn / (fn + tn) # False omission rate
-    acc = (tp + tn) / (tp + tn + fp + fn) # Accuracy
+    acc = utils.get_accuracy(tp, tn, fp, fn) # Accuracy
     # Matthews correlation coefficient
-    mcc = ((tp * tn - fp * fn)
-            / math.sqrt((tp + fp) * (tp + fn) * (tn + fp) * (tn + fn)))
+    mcc = utils.get_mcc(tp, tn, fp, fn)
 
     # Add column to analysis dataframe
     analysis_df[caller] = [
