@@ -17,20 +17,15 @@ import utils
 import parser
 
 # Change these if needed
-#db_name = '2017-06-30_NgsReviewer_master'
+#db_name = 'ground_truth'
 db_name = 'NgsReviewer'
 hostname = '172.17.0.9'
 
 # Directory structure
 main_dir = os.path.abspath(os.path.join(sys.path[0], '..'))
 output_dir = os.path.join(main_dir, 'output')
-data_path = os.path.join(main_dir, 'data')
-# Panel bed file
-bed_file = glob.glob(os.path.join(data_path, 'panel', '*.bed'))[0]
-# Samples directory
-samples_dir = os.path.join(data_path, 'samples')
-# Parsed sample data file path
-df_file = os.path.join(output_dir, 'parsed.tab')
+data_dir = os.path.join(main_dir, 'data')
+samples_dir = os.path.join(data_dir, 'samples')
 
 # Import joint caller modules
 print('Importing joint caller modules...')
@@ -48,9 +43,10 @@ if len(caller_names) > 0:
         caller_modules.append(importlib.import_module(caller))
 
 # Get small panel coverage file
-panel = parser.parse_bed(bed_file)
+bed_file = glob.glob(os.path.join(data_dir, 'panel', '*.bed'))[0]
 
 # Read / generate combined data file
+df_file = os.path.join(output_dir, 'parsed.tab')
 use_parsed = False
 if os.path.isfile(df_file):
     use_parsed = utils.query_yes_no('Found parsed samples file. Use it?')
@@ -59,7 +55,7 @@ if use_parsed:
     print('Reading parsed samples file...')
     # Read parsed CSV
     df = pandas.read_csv(df_file, sep='\t', low_memory=False)
-    # Convert SAMPLE_IDs to Strings
+    # Convert SAMPLE_IDs to Strings (some IDs could just be ints)
     df['SAMPLE_ID'] = df['SAMPLE_ID'].astype(str)
 else:
     df = parser.combine(db_name, hostname, bed_file, samples_dir)
@@ -74,9 +70,11 @@ covered_indices = [
         if df_covered[i] or df_reportable[i]
 ]
 covered_split = int(len(covered_indices) / 2)
+
 # Get training set
 training_indices = covered_indices[covered_split:]
 training = df.iloc[training_indices].reset_index(drop=True)
+
 # Add joint callers to df
 print('Adding joint callers...')
 for caller in caller_modules:
@@ -214,6 +212,6 @@ for x, y, caller in zip(
     annotations.append(pyplot.text(x, y, caller))
 adjust_text(annotations, arrowprops=dict(arrowstyle="-", color='r', lw=0.5))
 
-#pyplot.show()
+# Generate image
 figure.set_size_inches(10, 10)
 pyplot.savefig(os.path.join(output_dir, 'plot.png'), bbox_inches='tight')

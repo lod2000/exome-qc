@@ -162,18 +162,14 @@ def get_simplified_gt(db_name, hostname, gt_file):
     return simple_df
 
 def parse_bed(bed):
-    parsed = pandas.read_csv(
+    panel = pandas.read_csv(
             bed, names=['CHROMOSOME', 'START', 'END', 'GENE'], sep='\t'
     )
     genes = [
             re.search('_[A-Z0-9]*_', gene_string).group(0).split('_')[1]
-            for gene_string in parsed['GENE']
+            for gene_string in panel['GENE']
     ]
-    parsed['GENE'] = genes
-    return parsed
-
-# Returns a DataFrame of individual positions, genes, and chromosomes covered
-def split_panel(panel):
+    panel['GENE'] = genes
     positions = []
     genes = []
     chromosomes = []
@@ -240,16 +236,18 @@ def classify(df, callers):
         print(caller)
         # Change call to 'N' if negative or 'P' if positive hit
         np = ['N' if call == './.' else 'P' for call in df[caller]]
-        # TP = positive and reportable
-        # FP = positive, not reportable, covered
-        # TN = negative, not reportable, covered,
-        # FN = negative, reportable
-        # UP or UN = unclassified positive or negative
-        #######
-        # Example: 'N', reportable, covered
-        # (np[i] == 'P') is False and df['REPORTABLE'][i] is True
-        # (False == True) is False, so str(False)[0] is 'F'
-        # 'F' + 'N' is 'FN'
+        """
+        TP = positive and reportable
+        FP = positive, not reportable, covered
+        TN = negative, not reportable, covered,
+        FN = negative, reportable
+        UP or UN = unclassified positive or negative
+
+        Example: 'N', reportable, covered
+        (np[i] == 'P') is False and df['REPORTABLE'][i] is True
+        (False == True) is False, so str(False)[0] is 'F'
+        'F' + 'N' is 'FN'
+        """
         reportables = df['REPORTABLE']
         covereds = df['COVERED']
         size = df.shape[0]
@@ -268,20 +266,9 @@ def combine(db_name, hostname, bed_file, samples_dir):
     # Determine whether to use csv or mongo db
     use_csv = False
     if os.path.isfile(gt_file):
-        use_csv = utils.query_yes_no('Found ground truth csv. Use it instead of mongo?')
-        #valid = {
-        #        'yes': True, 'ye': True, 'y': True, '': True,
-        #        'no': False, 'n': False, 
-        #}
-        #while True:
-        #    choice = input(
-        #            'Found ground truth csv. Use it instead of mongo? [Y/n] '
-        #    ).lower()
-        #    if choice in valid:
-        #        use_csv = valid[choice]
-        #        break
-        #    else:
-        #        print('Please respond with yes/y or no/n')
+        use_csv = utils.query_yes_no(
+                'Found ground truth csv. Use it instead of mongo?'
+        )
 
     # Get ground truth
     if use_csv:
@@ -292,10 +279,8 @@ def combine(db_name, hostname, bed_file, samples_dir):
         # Parse ground truth DataFrame from mongo database
         gt = get_simplified_gt(db_name, hostname, gt_file)
 
-    # Parse .bed file
-    bed = parse_bed(bed_file)
-    print('Finding matching samples...')
     # Find sample ID matches in the ground truth
+    print('Finding matching samples...')
     sample_paths = find_samples(gt, samples_dir)
     # Combine ground truth DataFrames
     gt_sample_paths = gt['SAMPLE_PATH']
@@ -337,7 +322,7 @@ def combine(db_name, hostname, bed_file, samples_dir):
     df['REPORTABLE'] = [(i in true_pos.index) for i in range(0, df.shape[0])] 
 
     # Find positions that are covered by the small panel
-    panel = split_panel(bed)
+    panel = parse_bed(bed_file)
     covered = df.merge(
             panel, on=['GENE','CHROMOSOME','POSITION'], how='left',
             indicator=True).query('_merge == "both"'
