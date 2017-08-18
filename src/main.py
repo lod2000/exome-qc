@@ -49,9 +49,13 @@ if len(caller_names) > 0:
 
 # Get small panel coverage file
 panel = parser.parse_bed(bed_file)
-    
+
 # Read / generate combined data file
+use_parsed = False
 if os.path.isfile(df_file):
+    use_parsed = utils.query_yes_no('Found parsed samples file. Use it?')
+
+if use_parsed:
     print('Reading parsed samples file...')
     # Read parsed CSV
     df = pandas.read_csv(df_file, sep='\t', low_memory=False)

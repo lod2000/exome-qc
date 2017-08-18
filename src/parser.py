@@ -268,19 +268,20 @@ def combine(db_name, hostname, bed_file, samples_dir):
     # Determine whether to use csv or mongo db
     use_csv = False
     if os.path.isfile(gt_file):
-        valid = {
-                'yes': True, 'ye': True, 'y': True, '': True,
-                'no': False, 'n': False, 
-        }
-        while True:
-            choice = input(
-                    'Found ground truth csv. Use it instead of mongo? [Y/n] '
-            ).lower()
-            if choice in valid:
-                use_csv = valid[choice]
-                break
-            else:
-                print('Please respond with yes/y or no/n')
+        use_csv = utils.query_yes_no('Found ground truth csv. Use it instead of mongo?')
+        #valid = {
+        #        'yes': True, 'ye': True, 'y': True, '': True,
+        #        'no': False, 'n': False, 
+        #}
+        #while True:
+        #    choice = input(
+        #            'Found ground truth csv. Use it instead of mongo? [Y/n] '
+        #    ).lower()
+        #    if choice in valid:
+        #        use_csv = valid[choice]
+        #        break
+        #    else:
+        #        print('Please respond with yes/y or no/n')
 
     # Get ground truth
     if use_csv:

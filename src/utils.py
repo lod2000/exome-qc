@@ -63,3 +63,31 @@ def get_joint_callers(df):
 def get_all_callers(sample):
     headers = list(sample)
     return [h for h in headers if re.search('^(GT_|JOINT_)', h)]
+
+def query_yes_no(question, default='yes'):
+    """
+    Ask a yes/no question and return their answer as a boolean
+    'question' is a string presented to the user
+    'default' determines what to do if the user just hits <Enter>
+    """
+    valid = {
+            'yes': True, 'ye': True, 'y': True, 
+            'no': False, 'n': False, 
+    }
+    if default is None:
+        prompt = ' [y/n] '
+    elif default == 'yes':
+        prompt = ' [Y/n] '
+    elif default == 'no':
+        prompt = ' [y/N] '
+    else:
+        raise ValueError('Invalid default answer: "%s"' % default)
+
+    while True:
+        choice = input(question + prompt).lower()
+        if default is not None and choice == '':
+            return valid[default]
+        elif choice in valid:
+            return valid[choice]
+        else:
+            print('Please respond with yes/y or no/n')
