@@ -81,9 +81,14 @@ for caller in caller_modules:
     print('Adding ' + caller.NAME + '...')
     caller.add_caller(df, training)
 
-# Analyze combined callers
+# Classify joint callers
 print('Classifying combined calls...')
 parser.classify(df, utils.get_joint_callers(df))
+
+# Output with joint callers
+joint_file = os.path.join(output_dir, 'combined_with_joint_callers.tab')
+df.to_csv(joint_file, sep='\t', encoding='utf-8', index=False)
+print('Output with joint callers to ' + str(joint_file))
 
 # Get testing set
 testing_indices = covered_indices[:covered_split]

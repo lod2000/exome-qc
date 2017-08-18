@@ -349,7 +349,7 @@ def combine(db_name, hostname, bed_file, samples_dir):
 
     # Create parsed tab file
     df.to_csv(
-            os.path.join(output_dir, 'parsed.tab'), sep='\t',
+            os.path.join(output_dir, 'combined.tab'), sep='\t',
             encoding='utf-8', index=False
     )
     print('Output to file ' + os.path.join(output_dir, 'combined.tab'))
