@@ -46,7 +46,7 @@ if len(caller_names) > 0:
 bed_file = glob.glob(os.path.join(data_dir, 'panel', '*.bed'))[0]
 
 # Read / generate combined data file
-df_file = os.path.join(output_dir, 'parsed.tab')
+df_file = os.path.join(output_dir, 'combined.tab')
 use_parsed = False
 if os.path.isfile(df_file):
     use_parsed = utils.query_yes_no('Found parsed samples file. Use it?')

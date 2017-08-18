@@ -352,7 +352,7 @@ def combine(db_name, hostname, bed_file, samples_dir):
             os.path.join(output_dir, 'parsed.tab'), sep='\t',
             encoding='utf-8', index=False
     )
-    print('Output to file ' + os.path.join(output_dir, 'parsed.tab'))
+    print('Output to file ' + os.path.join(output_dir, 'combined.tab'))
     return df
 
 if __name__ == "__main__":
