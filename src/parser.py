@@ -265,14 +265,32 @@ def combine(db_name, hostname, bed_file, samples_dir):
     output_dir = os.path.join(main_dir, 'output')
     gt_file = os.path.join(main_dir, 'data', 'ground_truth', 'ground_truth.csv')
 
-    # Get ground truth
+    # Determine whether to use csv or mongo db
+    use_csv = False
     if os.path.isfile(gt_file):
-        print('Reading ground truth file...')
+        valid = {
+                'yes': True, 'ye': True, 'y': True, '': True,
+                'no': False, 'n': False, 
+        }
+        while True:
+            choice = input(
+                    'Found ground truth csv. Use it instead of mongo? [Y/n] '
+            ).lower()
+            if choice in valid:
+                use_csv = valid[choice]
+                break
+            else:
+                print('Please respond with yes/y or no/n')
+
+    # Get ground truth
+    if use_csv:
+        print('Reading ground truth csv...')
         gt = pandas.read_csv(gt_file, sep='\t')
         gt['SAMPLE_ID'] = gt['SAMPLE_ID'].astype(str)
     else:
         # Parse ground truth DataFrame from mongo database
         gt = get_simplified_gt(db_name, hostname, gt_file)
+
     # Parse .bed file
     bed = parse_bed(bed_file)
     print('Finding matching samples...')
