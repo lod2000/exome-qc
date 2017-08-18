@@ -56,12 +56,16 @@ def get_reportables(db_name, hostname):
                     torrent_doc['server_sample_id'] = server_doc['sample_id']
                 # Sample annotation tab file path
                 if 'ppmp_annotation_path' in server_doc:
-                    torrent_doc['ppmp_annotation_path'] = server_doc['ppmp_annotation_path']
+                    torrent_doc['ppmp_annotation_path'] = server_doc[
+                            'ppmp_annotation_path'
+                    ]
             # Combine torrent and final documents
             combined.append({**torrent_doc,  **final_doc})
         # In case there isn't a matching torrent result
         except TypeError:
-            print('No torrent result for ' + str(final_doc['torrent_result_id']))
+            print('No torrent result for ' 
+                    + str(final_doc['torrent_result_id'])
+            )
     # Generate combined DataFrame
     df = pandas.DataFrame(combined)
     return df
@@ -90,7 +94,9 @@ def get_simplified_gt(db_name, hostname, gt_file):
     for i in range(0, df.shape[0]):
         # Get paths to sample annotation tab files
         if df['ppmp_annotation_path'].notnull()[i]:
-            ppmp_annotation_paths.append(df['ppmp_annotation_path'][i].split('Results/')[-1])
+            ppmp_annotation_paths.append(df['ppmp_annotation_path'][i]
+                    .split('Results/')[-1]
+            )
         else:
             ppmp_annotation_paths.append('')
         sample_names.append(df['sample_name'][i])
@@ -161,10 +167,14 @@ def get_simplified_gt(db_name, hostname, gt_file):
     simple_df.to_csv(gt_file, sep='\t', encoding='utf8', index=False)
     return simple_df
 
+# Returns parsed list of positions covered by small panel test, taken from 
+# a .bed file
 def parse_bed(bed):
+    # Read bed file
     panel = pandas.read_csv(
             bed, names=['CHROMOSOME', 'START', 'END', 'GENE'], sep='\t'
     )
+    # Split gene from location string
     genes = [
             re.search('_[A-Z0-9]*_', gene_string).group(0).split('_')[1]
             for gene_string in panel['GENE']
@@ -173,6 +183,7 @@ def parse_bed(bed):
     positions = []
     genes = []
     chromosomes = []
+    # Split position ranges into one row per position
     for i in range(0, panel.shape[0]):
         pos_list = list(range(panel['START'][i], panel['END'][i]))
         positions += pos_list
@@ -198,7 +209,7 @@ def find_samples(gt, samples_dir):
             finals.append(os.path.join(*potential.split('/')))            
     return finals
 
-# Returns a DataFrames of sample for which matches exist in the ground truth
+# Returns a DataFrames of samples for which matches exist in the ground truth
 def combine_samples(samples_dir, sample_paths):
     # List of sample DataFrames
     df_list = []
@@ -222,7 +233,8 @@ def combine_samples(samples_dir, sample_paths):
                 'SNPEFF_ANNOTATED_DNA_CHANGE': 'DNA_CHANGE',
                 'SNPEFF_ANNOTATED_PROTEIN_CHANGE': 'PROTEIN_CHANGE'
         })
-        # Add SAMPLE_ID column (for when this DataFrame will be merged with others)
+        # Add SAMPLE_ID column (for when this DataFrame will be merged with 
+        # others)
         altered_df['SAMPLE_ID'] = sample_df.shape[0] * [sample_id]
         altered_df['SAMPLE_PATH'] = sample_df.shape[0] * [sample_path]
         # Add sample DataFrame to list
@@ -261,7 +273,9 @@ def combine(db_name, hostname, bed_file, samples_dir):
     # File system
     main_dir = os.path.abspath(os.path.join(sys.path[0], '..'))
     output_dir = os.path.join(main_dir, 'output')
-    gt_file = os.path.join(main_dir, 'data', 'ground_truth', 'ground_truth.csv')
+    gt_file = os.path.join(
+            main_dir, 'data', 'ground_truth', 'ground_truth.csv'
+    )
 
     # Determine whether to use csv or mongo db
     use_csv = False
